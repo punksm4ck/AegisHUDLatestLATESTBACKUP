@@ -96,6 +96,75 @@ MASTER_REGISTRY = [
     ("WiFi Airspace Scanner", ["~/Scripts/WifiScanner/main.py", "~/Scripts/Osiris-GUI-Suite/wifi_scanner.py"])
 ]
 
+# --- macOS path-resolution shim (auto-added) --------------------------------
+import glob as _glob
+_MAC_ROOT = os.path.expanduser("~/Projects/mac-gui-suite")
+_BY_NAME, _BY_DIR = {}, {}
+if os.path.isdir(_MAC_ROOT):
+    for _p in (_glob.glob(os.path.join(_MAC_ROOT, "*", "*.py"))
+               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*.py"))):
+        if "BACKUP" in _p or "backup" in _p:
+            continue
+        _base = os.path.basename(_p)
+        _parent = os.path.basename(os.path.dirname(_p)).lower().replace("-", "").replace("_", "")
+        if _base == "main.py":
+            _BY_DIR.setdefault(_parent, _p)
+        else:
+            _BY_NAME.setdefault(_base, _p)
+
+def _resolve_candidates(paths):
+    out = []
+    for p in paths:
+        xp = os.path.expanduser(p)
+        if os.path.exists(xp):
+            out.append(xp); continue
+        base = os.path.basename(xp)
+        if base == "main.py":
+            parent = os.path.basename(os.path.dirname(xp)).lower().replace("-", "").replace("_", "")
+            hit = _BY_DIR.get(parent)
+        else:
+            hit = _BY_NAME.get(base)
+        if hit:
+            out.append(hit)
+    return out
+
+MASTER_REGISTRY = [(n, _resolve_candidates(ps)) for n, ps in MASTER_REGISTRY]
+MASTER_REGISTRY = [(n, ps) for n, ps in MASTER_REGISTRY if ps]
+print(f"[HUB] macOS shim: {len(MASTER_REGISTRY)} tiles resolved", file=sys.stderr)
+
+# --- Auto-discover unregistered local projects (auto-added) ------------------
+_claimed = {p for _, ps in MASTER_REGISTRY for p in ps}
+_skip_dirs = {"AegisHUD-macOS"}  # the HUD itself
+_auto = []
+if os.path.isdir(_MAC_ROOT):
+    for _d in sorted(os.listdir(_MAC_ROOT)):
+        _dp = os.path.join(_MAC_ROOT, _d)
+        if (not os.path.isdir(_dp) or "BACKUP" in _d.upper()
+                or _d in _skip_dirs or _d.startswith(".")):
+            continue
+        _entry = None
+        _snake = _d.lower().replace("-", "_") + ".py"
+        for _cand in ("main.py", "app.py", _snake):
+            _c = os.path.join(_dp, _cand)
+            if os.path.exists(_c):
+                _entry = _c
+                break
+        if _entry is None:
+            _pys = [f for f in os.listdir(_dp)
+                    if f.endswith(".py") and "test" not in f.lower()]
+            if len(_pys) == 1:
+                _entry = os.path.join(_dp, _pys[0])
+        if _entry and _entry not in _claimed:
+            _title = _d.replace("-", " ").replace("_", " ").title()
+            _auto.append((_title, [_entry]))
+
+MASTER_REGISTRY = sorted(MASTER_REGISTRY + _auto, key=lambda t: t[0].lower())
+print(f"[HUB] auto-discovered {len(_auto)} additional projects "
+      f"({len(MASTER_REGISTRY)} tiles total)", file=sys.stderr)
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+
 # =========================================================
 # ⚡ INSTANT LOAD ENGINE (O(1) PATH RESOLUTION)
 # =========================================================
@@ -152,7 +221,12 @@ def launch_master_hub(parent_root=None):
 
     hub = tk.Tk() if not parent_root else tk.Toplevel(parent_root)
     _hub_ref = hub
+    hub.title("AEGIS_MASTER_HUB")
     hub.overrideredirect(True)
+    try:
+        hub.attributes("-alpha", 0.0)   # invisible until AppKit styling lands
+    except Exception:
+        pass
     hub.attributes("-topmost", True)
     hub.configure(bg=BG, highlightthickness=1, highlightbackground=BLUE)
 
@@ -183,6 +257,59 @@ def launch_master_hub(parent_root=None):
 
     hub.update()
 
+    # macOS: Tk ignores overrideredirect — strip decorations via AppKit,
+    # exactly as the AEGIS engine does (title-based NSWindow selection).
+    try:
+        from AppKit import (NSApplication, NSWindowStyleMaskBorderless,
+                            NSStatusWindowLevel)
+        for _w in NSApplication.sharedApplication().windows():
+            if str(_w.title()) == "AEGIS_MASTER_HUB":
+                _w.setStyleMask_(NSWindowStyleMaskBorderless)
+                _w.setLevel_(NSStatusWindowLevel)
+                _w.makeKeyAndOrderFront_(None)
+                # Position via AppKit directly — Tk's geometry manager
+                # still offsets for a title bar that no longer exists.
+                from AppKit import NSMakeRect, NSScreen
+                _sh_pt = NSScreen.mainScreen().frame().size.height
+                _w.setFrame_display_(
+                    NSMakeRect(x_pos, _sh_pt - 34 - h, w, h), True)
+                try:
+                    hub.attributes("-alpha", 1.0)
+                except Exception:
+                    pass
+                print("[HUB] AppKit borderless applied", file=sys.stderr)
+                break
+        else:
+            print("[HUB] WARNING: hub NSWindow not found by title",
+                  file=sys.stderr)
+            hub.attributes("-alpha", 1.0)
+    except Exception as exc:
+        print(f"[HUB] AppKit styling failed: {exc}", file=sys.stderr)
+        try:
+            hub.attributes("-alpha", 1.0)
+        except Exception:
+            pass
+
+    # Start the mouse-off watchdog (was defined but never invoked).
+    hub.after(400, _monitor_pointer)
+
+    # macOS: overrideredirect windows never become key on their own, and
+    # scroll/keyboard events are only delivered to the key window. Claim
+    # key status now and whenever the pointer enters.
+    def _claim_key(event=None):
+        try:
+            hub.focus_force()
+            from AppKit import NSApplication
+            for _w in NSApplication.sharedApplication().windows():
+                if _w.isVisible() and _w.frame().size.width >= 1000:
+                    _w.makeKeyAndOrderFront_(None)
+                    break
+        except Exception as exc:
+            print(f"[HUB] claim-key: {exc}", file=sys.stderr)
+
+    _claim_key()
+    hub.bind("<Enter>", _claim_key)
+
     s_var = tk.StringVar()
     s_row = tk.Frame(hub, bg=S2); s_row.pack(fill=tk.X, padx=12, pady=(15, 5))
     s_entry = tk.Entry(s_row, textvariable=s_var, bg=S2, fg=TEXT, font=("Inter", 18), relief="flat", insertbackground=BLUE)
@@ -196,16 +323,67 @@ def launch_master_hub(parent_root=None):
     def _update_scroll(e=None):
         hub.update_idletasks()
         r = canvas.bbox("all")
+        if not r:
+            return
         canvas.config(scrollregion=r)
+        print(f"[HUB] scrollregion={r} viewport_h={h-120} "
+              f"scrollable={r[3] > (h - 120)}", file=sys.stderr)
         if r[3] <= (h - 120):
+            canvas.unbind_all("<MouseWheel>")
             canvas.unbind_all("<Button-4>")
             canvas.unbind_all("<Button-5>")
         else:
+            # macOS: two-finger trackpad scroll arrives as <MouseWheel>
+            # with small signed deltas (positive = scroll up).
+            def _wheel(ev):
+                print(f"[HUB] wheel event: delta={ev.delta}", file=sys.stderr)
+                canvas.yview_scroll(-ev.delta, "units")
+            canvas.bind_all("<MouseWheel>", _wheel)
+            # Keep X11 bindings so the same file still works on Linux.
             def _sc(ev): canvas.yview_scroll(-1 if ev.num == 4 else 1, "units")
             canvas.bind_all("<Button-4>", _sc)
             canvas.bind_all("<Button-5>", _sc)
 
     grid.bind("<Configure>", _update_scroll)
+
+    # macOS fallback: intercept scroll events at the AppKit layer via an
+    # NSEvent local monitor — Tk's port drops <MouseWheel> for
+    # overrideredirect windows, so we bypass Tk event routing entirely.
+    try:
+        from AppKit import NSEvent
+        NSEventMaskScrollWheel = 1 << 22
+        _monitor_ref = [None]
+
+        def _ns_scroll(event):
+            try:
+                if not hub.winfo_exists():
+                    return event
+                px, py = hub.winfo_pointerxy()
+                rx, ry = hub.winfo_rootx(), hub.winfo_rooty()
+                if rx <= px <= rx + w and ry <= py <= ry + h:
+                    dy = event.scrollingDeltaY()
+                    if dy:
+                        canvas.yview_scroll(int(-dy), "units")
+                    return None  # consumed
+            except Exception as exc:
+                print(f"[HUB] ns-scroll: {exc}", file=sys.stderr)
+            return event
+
+        _monitor_ref[0] = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
+            NSEventMaskScrollWheel, _ns_scroll)
+        print("[HUB] NSEvent scroll monitor active", file=sys.stderr)
+
+        _orig_close = close
+        def close(event=None):
+            if _monitor_ref[0] is not None:
+                try:
+                    NSEvent.removeMonitor_(_monitor_ref[0])
+                except Exception:
+                    pass
+                _monitor_ref[0] = None
+            _orig_close(event)
+    except Exception as exc:
+        print(f"[HUB] NSEvent monitor unavailable: {exc}", file=sys.stderr)
     grid.columnconfigure((0, 1, 2, 3, 4), weight=1)
 
     apps_found = []
