@@ -464,6 +464,7 @@ def launch_master_hub(parent_root=None):
     hub.after(20, lambda: [hub.focus_force(), s_entry.focus_set(), _monitor_pointer()])
 
     if not parent_root: hub.mainloop()
+    return hub
 
 if __name__ == "__main__":
     launch_master_hub()
