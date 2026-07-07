@@ -96,6 +96,33 @@ MASTER_REGISTRY = [
     ("WiFi Airspace Scanner", ["~/Scripts/WifiScanner/main.py", "~/Scripts/Osiris-GUI-Suite/wifi_scanner.py"])
 ]
 
+# --- Extra one-off apps merged in from the older fork's registry -----------
+# (~/Scripts/AegisHUDLatest/aegis_master_hub.py). Folded into
+# MASTER_REGISTRY below as extra path candidates where the app is already
+# registered, or as new tiles where it isn't -- not duplicated as separate
+# tiles pointing at the same script.
+EXTRA_APPS = [
+    ("AI Datacenter Tracker", "~/Scripts/DatacenterTracker/main.py"),
+    ("FNV Mod Manager", "~/FNV_OSIRIS_Mod_Manager.py"),
+    ("ICE Detention Center Tracker", "~/Scripts/ICEDetentionGUI/ICEDetentionCenterTracker/main.py"),
+    ("Mohuan LED Dashboard", "~/Scripts/MohuanLED/main.py"),
+    ("NAS Drive GUI", "~/Scripts/NASDriveGUI/main.py"),
+    ("OSIRIS Matrix UI", "~/Scripts/OsirisMatrix/main.py"),
+    ("Singularity NOC", "~/Scripts/SingularityNOC/main.py"),
+    ("Storage GUI", "~/Scripts/StorageGUI/main.py"),
+    ("TubeMaster Pro", "~/Scripts/TubeMasterPro/main.py"),
+]
+
+_registry_by_name = {n: ps for n, ps in MASTER_REGISTRY}
+for _extra_name, _extra_path in EXTRA_APPS:
+    if _extra_name in _registry_by_name:
+        if _extra_path not in _registry_by_name[_extra_name]:
+            _registry_by_name[_extra_name].append(_extra_path)
+    else:
+        _new_ps = [_extra_path]
+        _registry_by_name[_extra_name] = _new_ps
+        MASTER_REGISTRY.append((_extra_name, _new_ps))
+
 # --- macOS path-resolution shim (auto-added) --------------------------------
 import glob as _glob
 _MAC_ROOT = os.path.expanduser("~/Projects/mac-gui-suite")
@@ -309,6 +336,23 @@ def launch_master_hub(parent_root=None):
 
     _claim_key()
     hub.bind("<Enter>", _claim_key)
+
+    # AEGIS COMMAND CENTER / Enterprise Application Matrix branding, ported
+    # from the older aegis_master_hub.py fork. `close` is looked up by name
+    # at click time (not bound directly) since the NSEvent scroll-monitor
+    # block below re-wraps `close` to also tear down its monitor -- a direct
+    # `command=close` here would capture the pre-wrap version and leak it.
+    hdr = tk.Frame(hub, bg=SURFACE)
+    hdr.pack(fill=tk.X)
+    title_frame = tk.Frame(hdr, bg=SURFACE)
+    title_frame.pack(side=tk.LEFT, padx=16, pady=12)
+    tk.Label(title_frame, text="AEGIS COMMAND CENTER", bg=SURFACE, fg=BLUE,
+             font=("JetBrains Mono", 14, "bold")).pack(anchor="w")
+    tk.Label(title_frame, text="Enterprise Application Matrix", bg=SURFACE, fg=MUTED,
+             font=("Inter", 9)).pack(anchor="w")
+    tk.Button(hdr, text="✕", bg=SURFACE, fg="#ef4444", relief="flat",
+              font=("JetBrains Mono", 14), cursor="hand2",
+              command=lambda: close()).pack(side=tk.RIGHT, padx=16, pady=10)
 
     s_var = tk.StringVar()
     s_row = tk.Frame(hub, bg=S2); s_row.pack(fill=tk.X, padx=12, pady=(15, 5))
