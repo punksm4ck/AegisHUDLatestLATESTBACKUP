@@ -93,7 +93,22 @@ MASTER_REGISTRY = [
     ("Wake Dell", ["~/Scripts/WakeDell/main.py", "~/Scripts/Wake-Dell/main.py"]),
     ("Wake HP", ["~/Scripts/wake-hp/main.py", "~/Scripts/Wake-HP/main.py"]),
     ("Waydroid Script", ["~/Scripts/waydroid_script.py", "~/Scripts/Waydroid/main.py", "~/Scripts/waydroid_script/main.py", "~/Scripts/waydroid_script/waydroid.py"]),
-    ("WiFi Airspace Scanner", ["~/Scripts/WifiScanner/main.py", "~/Scripts/Osiris-GUI-Suite/wifi_scanner.py"])
+    ("WiFi Airspace Scanner", ["~/Scripts/WifiScanner/main.py", "~/Scripts/Osiris-GUI-Suite/wifi_scanner.py"]),
+
+    # --- Added by Claude: previously-unregistered GUI apps (2026-11-15) ------
+    # Python apps in project folders with zero existing tiles:
+    ("Aegis Core AI Watcher", ["~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py"]),
+    ("Aegis Core Sentinel Diagnostics", ["~/Projects/mac-gui-suite/Aegis-Core/sentinel_diagnostics.py"]),
+    # SwiftUI apps, launched via their built .app bundle:
+    ("NativeCam", ["/Applications/NativeCam.app"]),
+    ("AEGIS Web Shell", ["/Applications/AEGIS.app"]),
+    # .app bundles that wrap an already-tiled script with the correct
+    # interpreter/venv (added alongside the existing script-path tiles,
+    # not replacing them):
+    ("AEGIS Chat (App)", ["~/Applications/AEGIS Chat.app"]),
+    ("AEGIS TV-OPS", ["~/Desktop/AEGIS TV-OPS.app"]),
+    ("AI Limit Tracker (App)", ["~/Applications/AILimitTracker.app"]),
+    ("OpenTorrent (App)", ["~/Desktop/OpenTorrent.app"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -447,6 +462,8 @@ def _launch_app(name, path, close_callback):
                             break
                 if not executed:
                     subprocess.Popen(["xdg-open", exp], stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
+            elif exp.endswith(".app"):
+                subprocess.Popen(["open", exp], stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
             else:
                 interp = _PY_FOR.get(exp) or ("bash" if exp.endswith(".sh") else "python3")
                 subprocess.Popen([interp, exp], cwd=os.path.dirname(exp), stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
