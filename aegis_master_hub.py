@@ -87,7 +87,7 @@ MASTER_REGISTRY = [
     ("System Monitor", ["~/Scripts/Osiris-GUI-Suite/system_monitor.py", "~/Scripts/SystemMonitor/main.py"]),
     ("The Tile App", ["~/Scripts/TheTileApp/main.py", "~/Scripts/TileApp/main.py"]),
     ("TubeMaster Pro Elite", ["~/Scripts/tubemaster_pro.py", "~/Scripts/Osiris-GUI-Suite/tubemaster_pro.py", "~/Scripts/TubeMaster/main.py"]),
-    ("URL Bypass Verifier", ["~/Scripts/UrlBypass/main.py", "~/Scripts/URL-Bypass/main.py"]),
+    ("URL Bypass Verifier", ["~/Scripts/UrlBypass/main.py", "~/Scripts/URL-Bypass/main.py", "~/Scripts/url_bypass_verifier.py"]),
     ("USB Performance Tester", ["~/Scripts/usb_performance_tester.py", "~/Scripts/USB-Performance/main.py"]),
     ("Voyager Telemetry", ["~/Scripts/Voyager/main.py", "~/Scripts/VoyagerTelemetry/main.py"]),
     ("Wake Dell", ["~/Scripts/WakeDell/main.py", "~/Scripts/Wake-Dell/main.py"]),
@@ -129,8 +129,11 @@ _MAC_ROOT = os.path.expanduser("~/Projects/mac-gui-suite")
 _BY_NAME, _BY_DIR = {}, {}
 if os.path.isdir(_MAC_ROOT):
     for _p in (_glob.glob(os.path.join(_MAC_ROOT, "*", "*.py"))
-               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*.py"))):
+               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*.py"))
+               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*", "*.py"))):  # e.g. gui_apps/Legacy/
         if "BACKUP" in _p or "backup" in _p:
+            continue
+        if "site-packages" in _p or "/venv/" in _p or "/.venv/" in _p:
             continue
         _base = os.path.basename(_p)
         _parent = os.path.basename(os.path.dirname(_p)).lower().replace("-", "").replace("_", "")
@@ -189,6 +192,217 @@ MASTER_REGISTRY = sorted(MASTER_REGISTRY + _auto, key=lambda t: t[0].lower())
 print(f"[HUB] auto-discovered {len(_auto)} additional projects "
       f"({len(MASTER_REGISTRY)} tiles total)", file=sys.stderr)
 # ---------------------------------------------------------------------------
+
+# --- Sync with the GUI App Dashboard (auto-added) ----------------------------
+# Adds a tile for every app the dashboard lists (minus its Ignore list, vendored
+# library demos and apps already tiled above). Reads a cache for an instant open;
+# a detached background process refreshes the cache when it gets old.
+#   Force a refresh now:  python3 aegis_master_hub.py --sync-dashboard
+import json as _json
+import ast as _ast
+import shutil as _shutil
+import importlib.util as _ilu
+
+_DASH_CACHE = os.path.expanduser("~/.gui_dashboard/hub_apps.json")
+_DASH_CACHE_MAX_AGE = 6 * 3600          # seconds before a background refresh
+_DASH_CANDIDATES = [
+    "~/Downloads/gui_dashboard.py",
+    "~/Scripts/gui_dashboard.py",
+    "~/Projects/gui_dashboard/gui_dashboard.py",
+    "~/gui_dashboard.py",
+]
+# Path fragments to leave out (vendored libraries, demos, the HUD's own files).
+_DASH_SKIP_PARTS = (
+    "/PyQt-Fluent-Widgets/", "/kivy/kivy/", "/CustomTkinter/customtkinter/",
+    "/PySimpleGUI/PySimpleGUI/", "/mpv/TOOLS/",
+)
+_DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
+_DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
+_PY_FOR = {}
+
+
+def _dash_key(path):
+    p = os.path.abspath(os.path.expanduser(path))
+    stem = re.sub(r"[^a-z0-9]", "", os.path.splitext(os.path.basename(p))[0].lower())
+    if stem in _DASH_GENERIC:
+        stem = re.sub(r"[^a-z0-9]", "", os.path.basename(os.path.dirname(p)).lower()) + stem
+    return stem
+
+
+def _dash_imports(path):
+    """Top-level module names a script imports (minus sibling/local modules)."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            tree = _ast.parse(f.read())
+    except Exception:
+        return set()
+    names = set()
+    for n in _ast.walk(tree):
+        if isinstance(n, _ast.Import):
+            names.update(a.name.split(".")[0] for a in n.names)
+        elif isinstance(n, _ast.ImportFrom) and n.level == 0 and n.module:
+            names.add(n.module.split(".")[0])
+    local, cur = set(), os.path.dirname(path)
+    for _ in range(3):
+        try:
+            for e in os.listdir(cur):
+                local.add(e[:-3] if e.endswith(".py") else e)
+        except OSError:
+            pass
+        cur = os.path.dirname(cur)
+    return {m for m in names if m not in local and m != "__main__"}
+
+
+_DASH_PROBE = (
+    "import importlib.util as u, sys, json\n"
+    "bad = []\n"
+    "for m in sys.argv[1:]:\n"
+    "    try:\n"
+    "        if u.find_spec(m) is None: bad.append(m)\n"
+    "    except Exception:\n"
+    "        bad.append(m)\n"
+    "print(json.dumps(bad))\n"
+)
+
+
+def _dash_pick_pythons(items):
+    """items: [(path, preferred_python)] -> {path: interpreter that can import the most}.
+    The dashboard's venv guess stays first, so it still wins ties; but a venv that
+    lacks a module the script imports loses to one that has it (e.g. Homebrew)."""
+    extras = []
+    for c in (sys.executable, _shutil.which("python3"),
+              "/opt/homebrew/bin/python3", "/usr/local/bin/python3"):
+        if c and os.path.exists(c) and c not in extras:
+            extras.append(c)
+    mods = {p: _dash_imports(p) for p, _ in items}
+    cands, want = {}, {}
+    for p, pref in items:
+        cl = [x for x in [pref] + [e for e in extras if e != pref] if x and os.path.exists(x)]
+        cands[p] = cl
+        for py in cl:
+            want.setdefault(py, set()).update(mods[p])
+    missing = {}
+    for py, wanted in want.items():
+        try:
+            r = subprocess.run([py, "-c", _DASH_PROBE] + sorted(wanted), cwd="/",
+                               capture_output=True, text=True, timeout=60)
+            missing[py] = set(_json.loads(r.stdout.strip().splitlines()[-1])) if r.returncode == 0 else None
+        except Exception:
+            missing[py] = None
+    best = {}
+    for p, cl in cands.items():
+        scored = [(len(mods[p] & missing[py]), i, py)
+                  for i, py in enumerate(cl) if missing.get(py) is not None]
+        best[p] = min(scored)[2] if scored else (cl[0] if cl else sys.executable)
+    return best
+
+
+_DASH_SRC_MEMO = os.path.expanduser("~/.gui_dashboard/hub_src.txt")
+
+
+def _dash_find_source():
+    """Locate gui_dashboard.py: env var, remembered path, known spots, then a shallow search."""
+    cands = [os.environ.get("AEGIS_DASHBOARD", "")]
+    try:
+        cands.append(open(_DASH_SRC_MEMO).read().strip())
+    except OSError:
+        pass
+    cands += [os.path.expanduser(c) for c in _DASH_CANDIDATES]
+    found = next((c for c in cands if c and os.path.isfile(c)), None)
+    if not found:
+        skip = {"venv", ".venv", "env", "site-packages", "node_modules", "Library",
+                ".Trash", ".git", "__pycache__"}
+        home = os.path.expanduser("~")
+        for root in ("~/Downloads", "~/Scripts", "~/Projects", "~/Developer", "~/Desktop", "~"):
+            base = os.path.expanduser(root)
+            depth0 = base.rstrip(os.sep).count(os.sep)
+            for dp, dns, fns in os.walk(base):
+                dns[:] = [d for d in dns if d not in skip and not d.startswith(".")]
+                if dp.count(os.sep) - depth0 >= (1 if base == home else 4):
+                    dns[:] = []
+                if "gui_dashboard.py" in fns:
+                    found = os.path.join(dp, "gui_dashboard.py")
+                    break
+            if found:
+                break
+    if found:
+        try:
+            os.makedirs(os.path.dirname(_DASH_SRC_MEMO), exist_ok=True)
+            with open(_DASH_SRC_MEMO, "w") as f:
+                f.write(found)
+        except OSError:
+            pass
+    return found
+
+
+def _dash_write_cache():
+    """Run the dashboard's own scan and store the result. Returns the app list."""
+    src = _dash_find_source()
+    if not src:
+        print("[HUB] gui_dashboard.py not found anywhere under ~/Downloads, ~/Scripts, "
+              "~/Projects, ~/Developer or ~; dashboard sync skipped (cache left unchanged)",
+              file=sys.stderr)
+        return None
+    spec = _ilu.spec_from_file_location("gui_dashboard_mod", src)
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    cfg = mod.load_config()
+    apps, _copies, _hidden = mod.discover(cfg)
+    ignored = set(cfg.get("ignored", []))
+    keep = [p for p in sorted(apps)
+            if not (p in ignored or os.path.basename(p) in _DASH_SKIP_FILES
+                    or any(part in p for part in _DASH_SKIP_PARTS))]
+    pys = _dash_pick_pythons([(p, mod.python_for(p)) for p in keep])
+    out = [[mod.display_name(p), p, pys[p]] for p in keep]
+    os.makedirs(os.path.dirname(_DASH_CACHE), exist_ok=True)
+    tmp = _DASH_CACHE + ".tmp"
+    with open(tmp, "w") as f:
+        _json.dump({"generated": time.time(), "apps": out}, f, indent=1)
+    os.replace(tmp, _DASH_CACHE)
+    return out
+
+
+if "--sync-dashboard" in sys.argv:
+    _res = _dash_write_cache()
+    if _res is not None:
+        print(f"[HUB] dashboard sync wrote {len(_res)} apps to {_DASH_CACHE}", file=sys.stderr)
+    sys.exit(0 if _res is not None else 1)
+
+_dash_apps = None
+try:
+    with open(_DASH_CACHE) as _f:
+        _blob = _json.load(_f)
+    _dash_apps = _blob.get("apps", [])
+    if time.time() - _blob.get("generated", 0) > _DASH_CACHE_MAX_AGE:
+        os.utime(_DASH_CACHE, None)     # avoid several hubs refreshing at once
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--sync-dashboard"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+except Exception:
+    try:                                # first run: build the cache once, now
+        _dash_apps = _dash_write_cache() or []
+    except Exception as _exc:
+        print(f"[HUB] dashboard sync failed: {_exc}", file=sys.stderr)
+        _dash_apps = []
+
+_have_keys = {_dash_key(p) for _, ps in MASTER_REGISTRY for p in ps}
+_have_titles = {n.lower() for n, _ in MASTER_REGISTRY}
+_dash_new = []
+for _title, _path, _py in (_dash_apps or []):
+    if not os.path.exists(_path):
+        continue
+    _k = _dash_key(_path)
+    if _k in _have_keys or _title.lower() in _have_titles:
+        continue
+    _have_keys.add(_k)
+    _have_titles.add(_title.lower())
+    _PY_FOR[_path] = _py
+    _dash_new.append((_title, [_path]))
+
+MASTER_REGISTRY = sorted(MASTER_REGISTRY + _dash_new, key=lambda t: t[0].lower())
+print(f"[HUB] dashboard sync added {len(_dash_new)} tiles "
+      f"({len(MASTER_REGISTRY)} tiles total)", file=sys.stderr)
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
 
@@ -234,7 +448,7 @@ def _launch_app(name, path, close_callback):
                 if not executed:
                     subprocess.Popen(["xdg-open", exp], stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
             else:
-                interp = "bash" if exp.endswith(".sh") else "python3"
+                interp = _PY_FOR.get(exp) or ("bash" if exp.endswith(".sh") else "python3")
                 subprocess.Popen([interp, exp], cwd=os.path.dirname(exp), stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
 
         if "TubeMaster" not in name: close_callback()
@@ -267,6 +481,8 @@ def launch_master_hub(parent_root=None):
             hub.destroy()
 
     _mouse_entered = [False]
+    _left_at = [None]
+    HUB_LINGER_SECS = 5   # how long the menu stays up after the pointer leaves
 
     def _monitor_pointer():
         if not hub.winfo_exists(): return
@@ -276,9 +492,13 @@ def launch_master_hub(parent_root=None):
             inside = rx <= x <= rx + w and ry <= y <= ry + h
             if inside:
                 _mouse_entered[0] = True
+                _left_at[0] = None          # back inside: cancel the countdown
             elif _mouse_entered[0]:
-                close()
-                return
+                if _left_at[0] is None:
+                    _left_at[0] = time.time()
+                elif time.time() - _left_at[0] >= HUB_LINGER_SECS:
+                    close()
+                    return
             hub.after(200, _monitor_pointer)
         except: pass
 
@@ -362,7 +582,8 @@ def launch_master_hub(parent_root=None):
     outer = tk.Frame(hub, bg=BG); outer.pack(fill=tk.BOTH, expand=True, padx=12, pady=5)
     canvas = tk.Canvas(outer, bg=BG, highlightthickness=0); canvas.pack(side="left", fill="both", expand=True)
     grid = tk.Frame(canvas, bg=BG)
-    canvas.create_window((0, 0), window=grid, anchor="nw", width=w-30)
+    _cwin = canvas.create_window((0, 0), window=grid, anchor="nw", width=w-30)
+    canvas.bind("<Configure>", lambda e: canvas.itemconfig(_cwin, width=e.width))
 
     def _update_scroll(e=None):
         hub.update_idletasks()
@@ -428,7 +649,14 @@ def launch_master_hub(parent_root=None):
             _orig_close(event)
     except Exception as exc:
         print(f"[HUB] NSEvent monitor unavailable: {exc}", file=sys.stderr)
-    grid.columnconfigure((0, 1, 2, 3, 4), weight=1)
+    for _c in range(5):
+        grid.columnconfigure(_c, weight=1, uniform="tile", minsize=0)
+    _TILE_FONT_PT = 10                       # tile text size; raise if too small
+    _WRAP = max(120, (w - 30) // 5 - 44)     # text wraps inside the tile
+    def _tile_label(n):
+        # Full name always shown: underscores become spaces so long names can
+        # wrap at word boundaries instead of being cut off.
+        return "▸ " + n.upper().replace("_", " ")
 
     apps_found = []
     for name, p_list in MASTER_REGISTRY:
@@ -440,9 +668,9 @@ def launch_master_hub(parent_root=None):
     for i, (name, path) in enumerate(apps_found):
         c = ACCENT_COLORS[i % len(ACCENT_COLORS)]
         b = tk.Frame(grid, bg=BORDER, padx=1, pady=1)
-        b.grid(row=i//5, column=i%5, padx=5, pady=5, sticky="ew")
-        btn = tk.Button(b, text=f"▸ {name.upper()}", bg=SURFACE, fg=c, activebackground=S2, activeforeground=c, relief="flat", anchor="w", font=("Inter", 13, "bold"), command=lambda n=name, p=path: _launch_app(n, p, close))
-        btn.pack(fill=tk.BOTH, expand=True, ipady=10, ipadx=8)
+        b.grid(row=i//5, column=i%5, padx=3, pady=2, sticky="nsew")
+        btn = tk.Button(b, text=_tile_label(name), width=1, wraplength=_WRAP, justify="left", bg=SURFACE, fg=c, activebackground=S2, activeforeground=c, relief="flat", anchor="w", font=("Inter", _TILE_FONT_PT, "bold"), command=lambda n=name, p=path: _launch_app(n, p, close))
+        btn.pack(fill=tk.BOTH, expand=True, ipady=2, ipadx=6)
         _btn_frames[name.lower()] = b
 
     def _search(*_):
