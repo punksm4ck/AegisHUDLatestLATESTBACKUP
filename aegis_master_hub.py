@@ -581,6 +581,32 @@ def launch_master_hub(parent_root=None):
 
     hub = tk.Tk() if not parent_root else tk.Toplevel(parent_root)
     _hub_ref = hub
+
+    # macOS: hide the Python rocket from the Dock. Must run after the Tk root
+    # exists (Tk creates/configures NSApplication). Accessory apps have no
+    # Dock icon or menu bar but can still own key windows -- they just are
+    # never auto-activated, so _activate_app() below does that explicitly.
+    # Only for a standalone root: a Toplevel shares its parent's NSApp.
+    def _activate_app():
+        if sys.platform != "darwin":
+            return
+        try:
+            from AppKit import NSApplication
+            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        except Exception as exc:
+            print(f"[HUB] activate: {exc}", file=sys.stderr)
+
+    if sys.platform == "darwin" and not parent_root:
+        try:
+            from AppKit import (NSApplication,
+                                NSApplicationActivationPolicyAccessory)
+            NSApplication.sharedApplication().setActivationPolicy_(
+                NSApplicationActivationPolicyAccessory)
+            print("[HUB] activation policy: accessory (no Dock icon)",
+                  file=sys.stderr)
+        except Exception as exc:
+            print(f"[HUB] accessory policy failed: {exc}", file=sys.stderr)
+
     hub.title("AEGIS_MASTER_HUB")
     hub.overrideredirect(True)
     try:
@@ -632,6 +658,7 @@ def launch_master_hub(parent_root=None):
             if str(_w.title()) == "AEGIS_MASTER_HUB":
                 _w.setStyleMask_(NSWindowStyleMaskBorderless)
                 _w.setLevel_(NSStatusWindowLevel)
+                _activate_app()
                 _w.makeKeyAndOrderFront_(None)
                 # Position via AppKit directly — Tk's geometry manager
                 # still offsets for a title bar that no longer exists.
@@ -664,6 +691,7 @@ def launch_master_hub(parent_root=None):
     # key status now and whenever the pointer enters.
     def _claim_key(event=None):
         try:
+            _activate_app()
             hub.focus_force()
             from AppKit import NSApplication
             for _w in NSApplication.sharedApplication().windows():
@@ -814,7 +842,7 @@ def launch_master_hub(parent_root=None):
     s_var.trace_add("write", _search)
 
     hub.bind("<Escape>", lambda e: close())
-    hub.after(20, lambda: [hub.focus_force(), s_entry.focus_set(), _monitor_pointer()])
+    hub.after(20, lambda: [_activate_app(), hub.focus_force(), s_entry.focus_set(), _monitor_pointer()])
 
     if not parent_root: hub.mainloop()
     return hub
