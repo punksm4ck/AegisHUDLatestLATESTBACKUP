@@ -577,20 +577,69 @@ def _launch_app(name, path, close_callback):
         if "TubeMaster" not in name: close_callback()
     except: pass
 
+_ACCESSORY_HOOKED = False
+
+
+def _pre_tk_accessory():
+    """macOS: keep the hub out of the Dock for the *whole* Tk startup.
+
+    Calling setActivationPolicy_(Accessory) after tk.Tk() returns is too
+    late: Tk() itself takes 1-4s, and during it the process is Foreground
+    (Dock icon visible) twice over -- Python.app checks in as a regular app,
+    and Tk's init explicitly calls [NSApp setActivationPolicy:Regular].
+    NSApplication can't be created before Tk (Tk needs its own TKApplication
+    subclass as NSApp; a plain NSApp crashes Tk_GetColor), so instead:
+      1. mark the main bundle LSUIElement in-memory, so check-in is UIElement;
+      2. coerce Tk's Regular policy request to Accessory via a category.
+    Neither instantiates NSApplication. Process-wide, so standalone only.
+    """
+    global _ACCESSORY_HOOKED
+    if _ACCESSORY_HOOKED:
+        return
+    try:
+        import objc
+        from Foundation import NSBundle
+        from AppKit import (NSApplication,
+                            NSApplicationActivationPolicyAccessory,
+                            NSApplicationActivationPolicyRegular)
+        info = NSBundle.mainBundle().infoDictionary()
+        if info is not None:
+            info["LSUIElement"] = "1"
+        _orig_set_policy = NSApplication.instanceMethodForSelector_(
+            b"setActivationPolicy:")
+
+        # PyObjC requires the category class to carry the class's own name.
+        class NSApplication(objc.Category(NSApplication)):  # noqa: F811
+            def setActivationPolicy_(self, policy):
+                if policy == NSApplicationActivationPolicyRegular:
+                    policy = NSApplicationActivationPolicyAccessory
+                return _orig_set_policy(self, policy)
+
+        _ACCESSORY_HOOKED = True
+        print("[HUB] pre-Tk accessory hook installed", file=sys.stderr)
+    except Exception as exc:
+        print(f"[HUB] pre-Tk accessory hook failed: {exc}", file=sys.stderr)
+
+
 def launch_master_hub(parent_root=None):
     global _hub_ref
     if _hub_ref:
         try: _hub_ref.destroy()
         except: pass
 
+    # Must precede tk.Tk(): see _pre_tk_accessory(). Only for a standalone
+    # root -- a Toplevel shares its parent's NSApp and Dock presence.
+    if sys.platform == "darwin" and not parent_root:
+        _pre_tk_accessory()
+
     hub = tk.Tk() if not parent_root else tk.Toplevel(parent_root)
     _hub_ref = hub
 
-    # macOS: hide the Python rocket from the Dock. Must run after the Tk root
-    # exists (Tk creates/configures NSApplication). Accessory apps have no
-    # Dock icon or menu bar but can still own key windows -- they just are
-    # never auto-activated, so _activate_app() below does that explicitly.
-    # Only for a standalone root: a Toplevel shares its parent's NSApp.
+    # macOS: belt-and-braces re-assert of the accessory policy now that the
+    # Tk root exists (no-op when the pre-Tk hook worked; the fallback if it
+    # didn't). Accessory apps have no Dock icon or menu bar but can still
+    # own key windows -- they just are never auto-activated, so
+    # _activate_app() below does that explicitly.
     def _activate_app():
         if sys.platform != "darwin":
             return
