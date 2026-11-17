@@ -819,21 +819,36 @@ def launch_master_hub(parent_root=None):
         from AppKit import NSEvent
         NSEventMaskScrollWheel = 1 << 22
         _monitor_ref = [None]
+        _scroll_acc = [0.0]
 
+        # This handler runs inside Tk's own Tcl_DoOneEvent (AppKit dispatch)
+        # via PyObjC, NOT as a Tk callback -- so it must not touch Tk at all.
+        # Any tkinter call here clears _tkinter's saved thread state, and the
+        # next Python Tk callback fired in the same event iteration (e.g. the
+        # one a real scroll triggers) aborts the process with "Fatal Python
+        # error: PyEval_RestoreThread ... GIL is released". So only record
+        # the delta here (AppKit-side hit test) and let _drain_scroll, a
+        # normal Tk timer, apply it.
         def _ns_scroll(event):
             try:
-                if not hub.winfo_exists():
-                    return event
-                px, py = hub.winfo_pointerxy()
-                rx, ry = hub.winfo_rootx(), hub.winfo_rooty()
-                if rx <= px <= rx + w and ry <= py <= ry + h:
+                win = event.window()
+                if win is not None and str(win.title()) == "AEGIS_MASTER_HUB":
                     dy = event.scrollingDeltaY()
                     if dy:
-                        canvas.yview_scroll(int(-dy), "units")
+                        _scroll_acc[0] += dy
                     return None  # consumed
             except Exception as exc:
                 print(f"[HUB] ns-scroll: {exc}", file=sys.stderr)
             return event
+
+        def _drain_scroll():
+            units = int(-_scroll_acc[0])     # keep sub-unit trackpad remainder
+            if units:
+                _scroll_acc[0] += units
+                canvas.yview_scroll(units, "units")
+            hub.after(16, _drain_scroll)
+
+        hub.after(16, _drain_scroll)
 
         _monitor_ref[0] = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(
             NSEventMaskScrollWheel, _ns_scroll)
