@@ -100,7 +100,10 @@ MASTER_REGISTRY = [
     ("Aegis Core AI Watcher", ["~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py"]),
     ("Aegis Core Sentinel Diagnostics", ["~/Projects/mac-gui-suite/Aegis-Core/sentinel_diagnostics.py"]),
     # SwiftUI apps, launched via their built .app bundle:
-    ("NativeCam", ["/Applications/NativeCam.app"]),
+    # NativeCam.app was rebuilt and renamed to Camera.app (same bundle id
+    # com.punksm4ck.nativecam, same dev team, Camera.app is the newer
+    # build -- Jul 27 02:09 vs Jul 26 22:41) -- point at the current build.
+    ("NativeCam", ["/Applications/Camera.app"]),
     ("AEGIS Web Shell", ["/Applications/AEGIS.app"]),
     # .app bundles that wrap an already-tiled script with the correct
     # interpreter/venv (added alongside the existing script-path tiles,
@@ -109,6 +112,12 @@ MASTER_REGISTRY = [
     ("AEGIS TV-OPS", ["~/Desktop/AEGIS TV-OPS.app"]),
     ("AI Limit Tracker (App)", ["~/Applications/AILimitTracker.app"]),
     ("OpenTorrent (App)", ["~/Desktop/OpenTorrent.app"]),
+
+    # --- Added by Claude (2026-11-17) -----------------------------------
+    # `scribe` is a pip-installed console script (scribe ui -> PyQt6 notepad
+    # GUI), not a .py file -- the hub's launcher can't pass it the "ui" arg
+    # directly, so launch_scribe.sh wraps it.
+    ("AEGIS Scribe", ["~/Scripts/aegis-scribe/launch_scribe.sh"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -139,23 +148,116 @@ for _extra_name, _extra_path in EXTRA_APPS:
         MASTER_REGISTRY.append((_extra_name, _new_ps))
 
 # --- macOS path-resolution shim (auto-added) --------------------------------
-import glob as _glob
+# Was 3 separate glob.glob() passes over the whole ~177-project tree (one per
+# depth) plus an os.path.exists() check on every match -- ~75s on every single
+# launch (29s of that just the depth-3 glob re-walking vendored library trees
+# it was going to throw away anyway, 40s more stat()-ing ~3500 matches one by
+# one). Replaced with a single pruned os.walk (skips vendored/venv/backup
+# dirs *before* descending into them, so it never pays to walk something it
+# will discard) plus a disk cache so repeat launches pay ~0ms instead of
+# re-walking the tree every time -- same cache-with-background-refresh
+# pattern as the dashboard sync further down.
+import json as _json0
 _MAC_ROOT = os.path.expanduser("~/Projects/mac-gui-suite")
-_BY_NAME, _BY_DIR = {}, {}
-if os.path.isdir(_MAC_ROOT):
-    for _p in (_glob.glob(os.path.join(_MAC_ROOT, "*", "*.py"))
-               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*.py"))
-               + _glob.glob(os.path.join(_MAC_ROOT, "*", "*", "*", "*.py"))):  # e.g. gui_apps/Legacy/
-        if "BACKUP" in _p or "backup" in _p:
+# Vendored third-party libraries pulled in wholesale as top-level folders --
+# never a real match for a registered app's basename (e.g. their generic
+# app.py/main.py would otherwise shadow an actual project's file once the
+# dangling-symlink check below stops a broken match from winning first).
+_VENDORED_DIRS = {"Pillow", "tqdm", "kivy", "mpv", "PySimpleGUI", "CustomTkinter",
+                  "PyQt-Fluent-Widgets", "python-for-android"}
+# Known duplicate-copy clusters (per CLAUDE.md) -- old-machine/backup copies
+# of other projects' files, not a project of their own. The basename
+# fallback below must never resolve a registered app's name into one of
+# these: besides being a stale copy, a dangling symlink inside one of them
+# can lose the tie-break race against a real file elsewhere purely on
+# os.walk's directory-visit order, silently swapping a working app's target
+# for the stale duplicate (seen in practice: "AI Datacenter Tracker" and
+# "Network Guardian" both resolved in here instead of their real project
+# folders, which then got auto-discovered a second time under a different
+# name -- i.e. the same app double-tiled).
+_DUPLICATE_CLUSTER_DIRS = {"wayland_tripwire", "watcher_diagnostics",
+                           "tray_fixer", "aula_scanner"}
+_SHIM_PRUNE_DIRS = ({"venv", ".venv", "env", "site-packages", "node_modules",
+                    "__pycache__", ".git", "build", "dist"}
+                    | _VENDORED_DIRS | _DUPLICATE_CLUSTER_DIRS)
+_SHIM_CACHE = os.path.expanduser("~/.gui_dashboard/hub_shim.json")
+_SHIM_CACHE_MAX_AGE = 6 * 3600
+
+
+def _shim_scan():
+    """One pruned walk of ~/Projects/mac-gui-suite, depth-capped to match the
+    old glob's */*/*/*.py reach (3 levels under the project root).
+
+    When the same basename/parent-key shows up more than once (a project's
+    own file plus a copy bundled inside *another* app's scripts/applications/
+    modules subtree, e.g. AegisHUDLatest/scripts/ carries copies of a dozen
+    other tools), keep the SHALLOWEST match. A real project's entry point
+    lives at <project>/main.py (depth 1); anything bundled inside another
+    app's own resource folder is necessarily deeper. os.walk's visit order
+    is not alphabetical like the old glob() happened to be, so without this
+    tie-break the winner is arbitrary -- confirmed in practice: it flipped
+    "AI Datacenter Tracker" onto a bundled copy instead of the real project
+    folder, which then got auto-discovered a second time under a different
+    name (same app, double-tiled)."""
+    by_name, by_dir = {}, {}
+    _name_depth, _dir_depth = {}, {}
+    if not os.path.isdir(_MAC_ROOT):
+        return by_name, by_dir
+    for _dp, _dns, _fns in os.walk(_MAC_ROOT):
+        _top = os.path.relpath(_dp, _MAC_ROOT).split(os.sep)[0]
+        if _top in _VENDORED_DIRS or _top in _DUPLICATE_CLUSTER_DIRS:
+            _dns[:] = []
             continue
-        if "site-packages" in _p or "/venv/" in _p or "/.venv/" in _p:
-            continue
-        _base = os.path.basename(_p)
-        _parent = os.path.basename(os.path.dirname(_p)).lower().replace("-", "").replace("_", "")
-        if _base == "main.py":
-            _BY_DIR.setdefault(_parent, _p)
-        else:
-            _BY_NAME.setdefault(_base, _p)
+        _depth = _dp[len(_MAC_ROOT):].count(os.sep)
+        if _depth >= 3:
+            _dns[:] = []
+        _dns[:] = [_d for _d in _dns
+                   if _d not in _SHIM_PRUNE_DIRS and "BACKUP" not in _d.upper()]
+        for _fn in _fns:
+            if not _fn.endswith(".py") or "backup" in _fn.lower():
+                continue
+            _p = os.path.join(_dp, _fn)
+            if not os.path.exists(_p):
+                continue  # dangling symlink (e.g. leftover Linux-box copies
+                          # under wayland_tripwire/) -- os.path.exists
+                          # follows the link, reports False if target is gone
+            _parent = os.path.basename(_dp).lower().replace("-", "").replace("_", "")
+            if _fn == "main.py":
+                if _parent not in _dir_depth or _depth < _dir_depth[_parent]:
+                    by_dir[_parent] = _p
+                    _dir_depth[_parent] = _depth
+            else:
+                if _fn not in _name_depth or _depth < _name_depth[_fn]:
+                    by_name[_fn] = _p
+                    _name_depth[_fn] = _depth
+    return by_name, by_dir
+
+
+def _shim_write_cache():
+    by_name, by_dir = _shim_scan()
+    os.makedirs(os.path.dirname(_SHIM_CACHE), exist_ok=True)
+    tmp = _SHIM_CACHE + ".tmp"
+    with open(tmp, "w") as f:
+        _json0.dump({"generated": time.time(), "by_name": by_name, "by_dir": by_dir}, f)
+    os.replace(tmp, _SHIM_CACHE)
+    return by_name, by_dir
+
+
+if "--rebuild-shim-cache" in sys.argv:
+    _shim_write_cache()
+    sys.exit(0)
+
+try:
+    with open(_SHIM_CACHE) as _f:
+        _shim_blob = _json0.load(_f)
+    _BY_NAME, _BY_DIR = _shim_blob["by_name"], _shim_blob["by_dir"]
+    if time.time() - _shim_blob.get("generated", 0) > _SHIM_CACHE_MAX_AGE:
+        os.utime(_SHIM_CACHE, None)     # avoid several hubs refreshing at once
+        subprocess.Popen([sys.executable, os.path.abspath(__file__), "--rebuild-shim-cache"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+except Exception:
+    _BY_NAME, _BY_DIR = _shim_write_cache()    # first run: build it once, now
 
 def _resolve_candidates(paths):
     out = []
@@ -585,7 +687,8 @@ def launch_master_hub(parent_root=None):
     title_frame.pack(side=tk.LEFT, padx=16, pady=12)
     tk.Label(title_frame, text="AEGIS COMMAND CENTER", bg=SURFACE, fg=BLUE,
              font=("JetBrains Mono", 14, "bold")).pack(anchor="w")
-    tk.Label(title_frame, text="Enterprise Application Matrix", bg=SURFACE, fg=MUTED,
+    subtitle_var = tk.StringVar(value="Enterprise Application Matrix")
+    tk.Label(title_frame, textvariable=subtitle_var, bg=SURFACE, fg=MUTED,
              font=("Inter", 9)).pack(anchor="w")
     tk.Button(hdr, text="✕", bg=SURFACE, fg="#ef4444", relief="flat",
               font=("JetBrains Mono", 14), cursor="hand2",
@@ -680,6 +783,7 @@ def launch_master_hub(parent_root=None):
         res = _smart_resolve(name, p_list)
         if res: apps_found.append((name, res))
     apps_found.sort(key=lambda x: x[0].lower())
+    subtitle_var.set(f"Enterprise Application Matrix · {len(apps_found)} apps")
 
     _btn_frames = {}
     for i, (name, path) in enumerate(apps_found):
@@ -700,6 +804,10 @@ def launch_master_hub(parent_root=None):
                 f.grid(row=vis_idx//5, column=vis_idx%5)
                 vis_idx += 1
             else: f.grid_remove()
+        if q:
+            subtitle_var.set(f"Enterprise Application Matrix · {vis_idx} / {len(apps_found)} apps")
+        else:
+            subtitle_var.set(f"Enterprise Application Matrix · {len(apps_found)} apps")
         canvas.yview_moveto(0)
         _update_scroll()
 
