@@ -286,8 +286,12 @@ _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
         _dp = os.path.join(_MAC_ROOT, _d)
+        # Vendored libraries are excluded here the same way the path shim
+        # prunes them: their lone setup.py otherwise passes the single-.py
+        # fallback below and shows up as a bogus "Pillow"/"Kivy"/... tile.
         if (not os.path.isdir(_dp) or "BACKUP" in _d.upper()
-                or _d in _skip_dirs or _d.startswith(".")):
+                or _d in _skip_dirs or _d in _VENDORED_DIRS
+                or _d.startswith(".")):
             continue
         _entry = None
         _snake = _d.lower().replace("-", "_") + ".py"
