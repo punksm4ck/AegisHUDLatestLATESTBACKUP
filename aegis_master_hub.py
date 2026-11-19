@@ -290,6 +290,8 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # CLI patchers that rewrite files under ~/Scripts on launch -- not apps;
               # hidden from the APPS menu (2026-11-19). Run them from a terminal if needed.
               "the-absolute-finale", "the-final-squash", "the-zenith-protocol",
+              # Linux-only (hardcoded /home/tsann paths, konsole, wmctrl); hidden 2026-11-19.
+              "master-gui-launcher",
               "xenn-master-suite-patcher"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
@@ -388,6 +390,8 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/punksadminconsole-enterprise/punksadminconsole_enterprise.py": "~/Projects/mac-gui-suite/punksadminconsole-enterprise/.venv/bin/python",
     "~/Projects/mac-gui-suite/ssoc/ssoc.py": "~/Projects/mac-gui-suite/ssoc/.venv/bin/python",
     "~/Projects/mac-gui-suite/tubemaster-pro/tubemaster_pro.py": "~/Projects/mac-gui-suite/tubemaster-pro/.venv/bin/python",
+    "~/Projects/mac-gui-suite/datacentertracker/main.py": "~/Projects/mac-gui-suite/datacentertracker/.venv/bin/python",
+    "~/Projects/mac-gui-suite/xenn-engagement-auditor/xenn_engagement_auditor.py": "~/Projects/mac-gui-suite/xenn-engagement-auditor/.venv/bin/python",
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
