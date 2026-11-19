@@ -53,7 +53,10 @@ MASTER_REGISTRY = [
     ("HEPHAESTUS Forge", ["~/Scripts/Hephaestus/main.py", "~/Scripts/HEPHAESTUS/main.py"]),
     ("Heuristic Diagnostic UI", ["~/Scripts/diagnostic_tool_mockup.py", "~/Scripts/AegisHUDLatest/diagnostic_tool_mockup.py"]),
     ("Heuristic Reporter", ["~/Scripts/auto_diagnostic_reporter.py", "~/Scripts/AegisHUDLatest/auto_diagnostic_reporter.py"]),
-    ("ICE Detention Tracker", ["~/Scripts/ICEDetentionCenterTracker/main.py", "~/Scripts/ICEDetentionGUI/ICEDetentionCenterTracker/main.py", "~/Scripts/ICEDetentionGUI/main.py"]),
+    # Was "ICE Detention Tracker", which resolved to ICEDetentionCenterTracker/main.py --
+    # the same file as the "ICE Detention Center Tracker" tile (double tile), while
+    # ICEDetentionGUI ("ICE DRI Tracker — Logistics Command") had no tile. Re-pointed 2026-11-19.
+    ("ICE DRI Tracker", ["~/Projects/mac-gui-suite/ICEDetentionGUI/main.py"]),
     ("ICE Watch", ["~/Scripts/ice_watch.py", "~/Scripts/AegisHUDLatest/ice_watch.py"]),
     ("Inbox Zero", ["~/Scripts/aegis_inbox_zero_enterprise.py", "~/Scripts/inbox_zero.py", "~/Scripts/inbox_zero_public.py", "~/Scripts/inbox_zero_gmail2.py", "~/Scripts/InboxZero/main.py", "~/Scripts/Inbox-Zero/main.py"]),
     ("JobNexus Enterprise", ["~/Scripts/JohsNexus_GUI/main.py", "~/Scripts/JohsNexus_GUI/launch_jobnexus.py", "~/Scripts/JobNexus_GUI/launch_jobnexus.py"]),
@@ -144,6 +147,17 @@ MASTER_REGISTRY = [
     # punksm4ck/Pin_Dashboard_HTML), built with `npm run dist:mac` and
     # installed to ~/Applications.
     ("Pinboard Server", ["~/Applications/Pinboard Server.app"]),
+
+    # --- Added by Claude (2026-11-19, later) ------------------------------
+    # Variants with their own repo and materially different code that had no
+    # tile (their paths were only fallback candidates of other tiles, or not
+    # auto-discoverable). Static-checked on Homebrew python; NOT test-launched.
+    # Launcher hub; it starts its child scripts with bare "python3".
+    ("OSIRIS Unified Tracker Hub", ["~/Projects/mac-gui-suite/UnifiedTracker/main.py"]),
+    # The non-v1 Aether Singularity (2,035 lines; "Aether Singularity Suite" runs v1).
+    ("Aether Singularity (original)", ["~/Projects/mac-gui-suite/aether-singularity/aether_singularity.py"]),
+    # Differs from the "Xenn Engagement Auditor" tile's copy; folder has no main.py.
+    ("XENN Engagement Auditor (xenn)", ["~/Projects/mac-gui-suite/xenn/xenn_engagement_auditor.py"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -439,6 +453,11 @@ INTERPRETER_OVERRIDES = {
     # Homebrew python: PyQt6 from Homebrew site-packages, psutil from the per-user site
     # (~/Library/Python/3.14). Import-checked without -I, as the hub launches; NOT test-launched.
     "~/Projects/mac-gui-suite/storage-gui/storage_gui.py": _BREW_PY,  # Storage Gui (PyQt6, psutil)
+    # The 4 variant tiles added 2026-11-19 (static-checked, NOT test-launched):
+    "~/Projects/mac-gui-suite/ICEDetentionGUI/main.py": _BREW_PY,  # ICE DRI Tracker (PyQt6; groq optional)
+    "~/Projects/mac-gui-suite/UnifiedTracker/main.py": _BREW_PY,  # OSIRIS Unified Tracker Hub (PyQt6)
+    "~/Projects/mac-gui-suite/aether-singularity/aether_singularity.py": _BREW_PY,  # Aether Singularity (original) (PyQt6, psutil, requests)
+    "~/Projects/mac-gui-suite/xenn/xenn_engagement_auditor.py": _BREW_PY,  # XENN Engagement Auditor (xenn) (PyQt6)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
