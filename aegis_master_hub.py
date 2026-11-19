@@ -158,6 +158,10 @@ MASTER_REGISTRY = [
     ("Aether Singularity (original)", ["~/Projects/mac-gui-suite/aether-singularity/aether_singularity.py"]),
     # Differs from the "Xenn Engagement Auditor" tile's copy; folder has no main.py.
     ("XENN Engagement Auditor (xenn)", ["~/Projects/mac-gui-suite/xenn/xenn_engagement_auditor.py"]),
+    # ai-datacenter-tracker variant (differs from the "AI Datacenter Tracker" tile's
+    # datacentertracker copy). Needs its own .venv: without groq it runs
+    # `pip install groq --break-system-packages` into whatever python launched it.
+    ("AI Datacenter Tracker (USA)", ["~/Projects/mac-gui-suite/ai-datacenter-tracker/main.py"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -458,6 +462,9 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/UnifiedTracker/main.py": _BREW_PY,  # OSIRIS Unified Tracker Hub (PyQt6)
     "~/Projects/mac-gui-suite/aether-singularity/aether_singularity.py": _BREW_PY,  # Aether Singularity (original) (PyQt6, psutil, requests)
     "~/Projects/mac-gui-suite/xenn/xenn_engagement_auditor.py": _BREW_PY,  # XENN Engagement Auditor (xenn) (PyQt6)
+    # Own .venv (2026-11-19; wheels only, hash-pinned, 14-day rule, no .pth): PyQt6 6.12.0,
+    # PyQt6-WebEngine 6.140.0, groq 1.7.0. Import-checked; NOT test-launched.
+    "~/Projects/mac-gui-suite/ai-datacenter-tracker/main.py": "~/Projects/mac-gui-suite/ai-datacenter-tracker/.venv/bin/python",  # AI Datacenter Tracker (USA)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
