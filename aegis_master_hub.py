@@ -355,7 +355,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # to EDM_Finder; wifi-airspace-scanner is WifiScanner minus one processEvents() line.
               "edm-finder", "wifi-airspace-scanner",
               # Tiled via launchers/*_live.sh instead (the bare script needs a subcommand).
-              "sentinel-diag", "ai-content-detector-sentinel-diag-suite"}
+              "sentinel-diag", "ai-content-detector-sentinel-diag-suite",
+              # Duplicate of sentinel-diag (minus a copyright line) that also fails bare (needs the
+              # "live" subcommand) and on Homebrew python (no PyQt5 bindings). Hidden 2026-11-19.
+              "sentinel-diagnostics"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -414,6 +417,7 @@ _DASH_SKIP_PARTS = (
     "/edm-finder/", "/wifi-airspace-scanner/",   # duplicate copies, hidden 2026-11-19
     # Tiled via launchers/*_live.sh (bare script exits without the "live" subcommand):
     "/Aegis-Core/sentinel_diagnostics.py", "/sentinel-diag/", "/ai-content-detector-sentinel-diag-suite/",
+    "/sentinel-diagnostics/",   # duplicate of sentinel-diag, hidden 2026-11-19 (not -gui)
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
