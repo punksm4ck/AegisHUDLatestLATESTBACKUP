@@ -107,7 +107,11 @@ MASTER_REGISTRY = [
     # --- Added by Claude: previously-unregistered GUI apps (2026-11-15) ------
     # Python apps in project folders with zero existing tiles:
     ("Aegis Core AI Watcher", ["~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py"]),
-    ("Aegis Core Sentinel Diagnostics", ["~/Projects/mac-gui-suite/Aegis-Core/sentinel_diagnostics.py"]),
+    # sentinel_diagnostics.py needs the "live" subcommand for its GUI (run bare it exits
+    # with an argparse error), so these tiles run wrappers in this repo's launchers/.
+    ("Aegis Core Sentinel Diagnostics", ["~/Projects/mac-gui-suite/AegisHUDLatestLATESTBACKUP/launchers/aegis_core_sentinel_live.sh"]),
+    ("Sentinel Diag", ["~/Projects/mac-gui-suite/AegisHUDLatestLATESTBACKUP/launchers/sentinel_diag_live.sh"]),
+    ("Ai Content Detector Sentinel Diag Suite", ["~/Projects/mac-gui-suite/AegisHUDLatestLATESTBACKUP/launchers/diag_suite_sentinel_live.sh"]),
     # SwiftUI apps, launched via their built .app bundle:
     # NativeCam.app was rebuilt and renamed to Camera.app (same bundle id
     # com.punksm4ck.nativecam, same dev team, Camera.app is the newer
@@ -349,7 +353,9 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "PunksTactical",
               # Duplicate copies of tiled apps (hidden 2026-11-19): edm-finder is byte-identical
               # to EDM_Finder; wifi-airspace-scanner is WifiScanner minus one processEvents() line.
-              "edm-finder", "wifi-airspace-scanner"}
+              "edm-finder", "wifi-airspace-scanner",
+              # Tiled via launchers/*_live.sh instead (the bare script needs a subcommand).
+              "sentinel-diag", "ai-content-detector-sentinel-diag-suite"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -406,6 +412,8 @@ _DASH_SKIP_PARTS = (
     "/PySimpleGUI/PySimpleGUI/", "/mpv/TOOLS/",
     "/PunksTactical/",   # hidden 2026-11-19 (main.py doesn't parse)
     "/edm-finder/", "/wifi-airspace-scanner/",   # duplicate copies, hidden 2026-11-19
+    # Tiled via launchers/*_live.sh (bare script exits without the "live" subcommand):
+    "/Aegis-Core/sentinel_diagnostics.py", "/sentinel-diag/", "/ai-content-detector-sentinel-diag-suite/",
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
@@ -456,10 +464,9 @@ INTERPRETER_OVERRIDES = {
     # Per-project venvs created 2026-11-19 (wheels only, hash-pinned, no .pth files). Import-checked;
     # NOT test-launched. PyQt5 is not usable in Homebrew python (only Qt5 libs + sip installed).
     "~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/Aegis-Core/.venv/bin/python",  # Aegis Core AI Watcher (PyQt5, mss)
-    "~/Projects/mac-gui-suite/Aegis-Core/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/Aegis-Core/.venv/bin/python",  # Aegis Core Sentinel Diagnostics (PyQt5)
     "~/Projects/mac-gui-suite/ai-watcher-enterprise/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/ai-watcher-enterprise/.venv/bin/python",  # Ai Watcher Enterprise (PyQt5, mss, numpy)
-    "~/Projects/mac-gui-suite/sentinel-diag/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/sentinel-diag/.venv/bin/python",  # Sentinel Diag (PyQt5)
-    "~/Projects/mac-gui-suite/ai-content-detector-sentinel-diag-suite/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/ai-content-detector-sentinel-diag-suite/.venv/bin/python",  # Ai Content Detector Sentinel Diag Suite (PyQt5)
+    # The 3 sentinel_diagnostics.py tiles now run launchers/*_live.sh, which exec their
+    # project .venv python directly (.sh tiles don't consult these overrides).
     "~/Projects/mac-gui-suite/ICE-Watch/ice_watch.py": "~/Projects/mac-gui-suite/ICE-Watch/.venv/bin/python",  # ICE Watch (Kivy 2.3.1, Python 3.12)
     # Homebrew python: PyQt6 from Homebrew site-packages, psutil from the per-user site
     # (~/Library/Python/3.14). Import-checked without -I, as the hub launches; NOT test-launched.
