@@ -516,6 +516,7 @@ except Exception:
         print(f"[HUB] dashboard sync failed: {_exc}", file=sys.stderr)
         _dash_apps = []
 
+_PY_DIR_PICKS = {}
 _have_keys = {_dash_key(p) for _, ps in MASTER_REGISTRY for p in ps}
 _have_titles = {n.lower() for n, _ in MASTER_REGISTRY}
 _dash_new = []
@@ -527,9 +528,8 @@ for _title, _path, _py in (_dash_apps or []):
     # those tiles fall back to bare "python3" (/usr/bin/python3 3.9 under
     # launchd, no PyQt6) and a symlinked/moved app loses its venv. (2026-11-18)
     _PY_FOR.setdefault(_pyfor_key(_path), _py)
-    # Same-folder fallback, e.g. an auto-discovered main.py whose sibling gui.py
-    # is what the dashboard listed.
-    _PY_FOR.setdefault("dir:" + os.path.dirname(_pyfor_key(_path)), _py)
+    # Collect per-folder picks for the same-folder fallback below.
+    _PY_DIR_PICKS.setdefault(os.path.dirname(_pyfor_key(_path)), set()).add(_py)
     _k = _dash_key(_path)
     if _k in _have_keys or _title.lower() in _have_titles:
         continue
@@ -537,6 +537,14 @@ for _title, _path, _py in (_dash_apps or []):
     _have_titles.add(_title.lower())
     _PY_FOR[_path] = _py
     _dash_new.append((_title, [_path]))
+
+# Same-folder fallback (e.g. an auto-discovered main.py whose sibling gui.py is
+# what the dashboard listed) -- only where every listed sibling in that folder
+# agrees on one interpreter. Mixed folders (Osiris-GUI-Suite: tkinter scripts on
+# the HUD venv, PyQt6 scripts on Homebrew) get no fallback.
+for _d, _pys in _PY_DIR_PICKS.items():
+    if len(_pys) == 1:
+        _PY_FOR.setdefault("dir:" + _d, next(iter(_pys)))
 
 MASTER_REGISTRY = sorted(MASTER_REGISTRY + _dash_new, key=lambda t: t[0].lower())
 print(f"[HUB] dashboard sync added {len(_dash_new)} tiles "
