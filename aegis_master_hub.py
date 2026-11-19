@@ -118,6 +118,11 @@ MASTER_REGISTRY = [
     # GUI), not a .py file -- the hub's launcher can't pass it the "ui" arg
     # directly, so launch_scribe.sh wraps it.
     ("AEGIS Scribe", ["~/Scripts/aegis-scribe/launch_scribe.sh"]),
+
+    # --- Added by Claude (2026-11-18) -----------------------------------
+    # SwiftUI menu-bar app (source: ~/Scripts/NetSec-VPS), built Release
+    # with xcodebuild and installed to ~/Applications.
+    ("NetSec-VPS", ["~/Applications/NetSec-VPS.app"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -342,6 +347,11 @@ _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui
 _PY_FOR = {}
 
 
+def _pyfor_key(path):
+    """Resolved, case-folded path (APFS is case-insensitive) for _PY_FOR lookups."""
+    return os.path.realpath(os.path.expanduser(path)).lower()
+
+
 def _dash_key(path):
     p = os.path.abspath(os.path.expanduser(path))
     stem = re.sub(r"[^a-z0-9]", "", os.path.splitext(os.path.basename(p))[0].lower())
@@ -512,6 +522,14 @@ _dash_new = []
 for _title, _path, _py in (_dash_apps or []):
     if not os.path.exists(_path):
         continue
+    # Remember the dashboard's interpreter pick even for apps already tiled
+    # above (registry/auto-discovered), keyed by resolved path: otherwise
+    # those tiles fall back to bare "python3" (/usr/bin/python3 3.9 under
+    # launchd, no PyQt6) and a symlinked/moved app loses its venv. (2026-11-18)
+    _PY_FOR.setdefault(_pyfor_key(_path), _py)
+    # Same-folder fallback, e.g. an auto-discovered main.py whose sibling gui.py
+    # is what the dashboard listed.
+    _PY_FOR.setdefault("dir:" + os.path.dirname(_pyfor_key(_path)), _py)
     _k = _dash_key(_path)
     if _k in _have_keys or _title.lower() in _have_titles:
         continue
@@ -571,7 +589,10 @@ def _launch_app(name, path, close_callback):
             elif exp.endswith(".app"):
                 subprocess.Popen(["open", exp], stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
             else:
-                interp = _PY_FOR.get(exp) or ("bash" if exp.endswith(".sh") else "python3")
+                interp = ("bash" if exp.endswith(".sh") else
+                          _PY_FOR.get(exp) or _PY_FOR.get(_pyfor_key(exp))
+                          or _PY_FOR.get("dir:" + os.path.dirname(_pyfor_key(exp)))
+                          or "python3")
                 subprocess.Popen([interp, exp], cwd=os.path.dirname(exp), stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
 
         if "TubeMaster" not in name: close_callback()
