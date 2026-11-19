@@ -301,7 +301,11 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "xenn-master-suite-patcher",
               # Stale copy of github-tool-auto-sync's script (still `git push --force`es the
               # Intel vault); the "Github Tool Auto Sync" tile runs the fixed copy. Hidden 2026-11-19.
-              "sovereign-nexus-apex"}
+              "sovereign-nexus-apex",
+              # Not GUI apps (hidden 2026-11-19): 06-build-adapters is a code generator that
+              # writes into app/; the two apply-aegis-* scripts are one-shot patchers that
+              # overwrite a hardcoded C:/Users/tsann/... file. Run from a terminal if needed.
+              "06-build-adapters", "apply-aegis-lockfix", "apply-aegis-titan"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
