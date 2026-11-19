@@ -413,6 +413,17 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/xenn-engagement-auditor/xenn_engagement_auditor.py": "~/Projects/mac-gui-suite/xenn-engagement-auditor/.venv/bin/python",
     # Import-checked only (2026-11-19, every third-party import resolves); NOT test-launched.
     "~/Projects/mac-gui-suite/meme-sync-gui/meme_sync_gui.py": _BREW_PY,  # Meme Sync Pro (PyQt6, PIL)
+    # Per-project venvs created 2026-11-19 (wheels only, hash-pinned, no .pth files). Import-checked;
+    # NOT test-launched. PyQt5 is not usable in Homebrew python (only Qt5 libs + sip installed).
+    "~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/Aegis-Core/.venv/bin/python",  # Aegis Core AI Watcher (PyQt5, mss)
+    "~/Projects/mac-gui-suite/Aegis-Core/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/Aegis-Core/.venv/bin/python",  # Aegis Core Sentinel Diagnostics (PyQt5)
+    "~/Projects/mac-gui-suite/ai-watcher-enterprise/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/ai-watcher-enterprise/.venv/bin/python",  # Ai Watcher Enterprise (PyQt5, mss, numpy)
+    "~/Projects/mac-gui-suite/sentinel-diag/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/sentinel-diag/.venv/bin/python",  # Sentinel Diag (PyQt5)
+    "~/Projects/mac-gui-suite/ai-content-detector-sentinel-diag-suite/sentinel_diagnostics.py": "~/Projects/mac-gui-suite/ai-content-detector-sentinel-diag-suite/.venv/bin/python",  # Ai Content Detector Sentinel Diag Suite (PyQt5)
+    "~/Projects/mac-gui-suite/ICE-Watch/ice_watch.py": "~/Projects/mac-gui-suite/ICE-Watch/.venv/bin/python",  # ICE Watch (Kivy 2.3.1, Python 3.12)
+    # Homebrew python: PyQt6 from Homebrew site-packages, psutil from the per-user site
+    # (~/Library/Python/3.14). Import-checked without -I, as the hub launches; NOT test-launched.
+    "~/Projects/mac-gui-suite/storage-gui/storage_gui.py": _BREW_PY,  # Storage Gui (PyQt6, psutil)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
