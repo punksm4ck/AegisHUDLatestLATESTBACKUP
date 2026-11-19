@@ -286,7 +286,11 @@ print(f"[HUB] macOS shim: {len(MASTER_REGISTRY)} tiles resolved", file=sys.stder
 
 # --- Auto-discover unregistered local projects (auto-added) ------------------
 _claimed = {p for _, ps in MASTER_REGISTRY for p in ps}
-_skip_dirs = {"AegisHUD-macOS"}  # the HUD itself
+_skip_dirs = {"AegisHUD-macOS",  # the HUD itself
+              # CLI patchers that rewrite files under ~/Scripts on launch -- not apps;
+              # hidden from the APPS menu (2026-11-19). Run them from a terminal if needed.
+              "the-absolute-finale", "the-final-squash", "the-zenith-protocol",
+              "xenn-master-suite-patcher"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
