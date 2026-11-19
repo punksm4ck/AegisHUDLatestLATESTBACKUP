@@ -324,7 +324,10 @@ MASTER_REGISTRY = [(n, ps) for n, ps in MASTER_REGISTRY if ps]
 print(f"[HUB] macOS shim: {len(MASTER_REGISTRY)} tiles resolved", file=sys.stderr)
 
 # --- Auto-discover unregistered local projects (auto-added) ------------------
-_claimed = {p for _, ps in MASTER_REGISTRY for p in ps}
+# Resolved + case-folded (APFS is case-insensitive): the "<folder>.py" probe below
+# matches e.g. Grid_Walkerv2.py as grid_walkerv2.py, and an exact-string check then
+# missed the registry's claim and tiled the same file twice (fixed 2026-11-19).
+_claimed = {os.path.realpath(p).lower() for _, ps in MASTER_REGISTRY for p in ps}
 _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # CLI patchers that rewrite files under ~/Scripts on launch -- not apps;
               # hidden from the APPS menu (2026-11-19). Run them from a terminal if needed.
@@ -343,7 +346,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # hardcoded C:/Users/tsann/.../gui_apps path. Not an app; hidden 2026-11-19.
               "aegis-crash-fixer-v3",
               # main.py doesn't parse (see the commented-out registry entry). Hidden 2026-11-19.
-              "PunksTactical"}
+              "PunksTactical",
+              # Duplicate copies of tiled apps (hidden 2026-11-19): edm-finder is byte-identical
+              # to EDM_Finder; wifi-airspace-scanner is WifiScanner minus one processEvents() line.
+              "edm-finder", "wifi-airspace-scanner"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -367,7 +373,7 @@ if os.path.isdir(_MAC_ROOT):
                     if f.endswith(".py") and "test" not in f.lower()]
             if len(_pys) == 1:
                 _entry = os.path.join(_dp, _pys[0])
-        if _entry and _entry not in _claimed:
+        if _entry and os.path.realpath(_entry).lower() not in _claimed:
             _title = _d.replace("-", " ").replace("_", " ").title()
             _auto.append((_title, [_entry]))
 
@@ -399,6 +405,7 @@ _DASH_SKIP_PARTS = (
     "/PyQt-Fluent-Widgets/", "/kivy/kivy/", "/CustomTkinter/customtkinter/",
     "/PySimpleGUI/PySimpleGUI/", "/mpv/TOOLS/",
     "/PunksTactical/",   # hidden 2026-11-19 (main.py doesn't parse)
+    "/edm-finder/", "/wifi-airspace-scanner/",   # duplicate copies, hidden 2026-11-19
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
