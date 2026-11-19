@@ -17,3 +17,6 @@ pyvenv.cfg
 Thumbs.db
 .DS_Store
 *.pre-*
+
+# Local backups of the hub (never commit)
+*.bak*
