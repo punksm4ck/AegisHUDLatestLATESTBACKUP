@@ -74,7 +74,10 @@ MASTER_REGISTRY = [
     ("Price Sniper", ["~/Scripts/PriceSniper/main.py", "~/Scripts/Osiris-GUI-Suite/price_sniper.py", "~/Scripts/PriceHunter/main.py"]),
     ("Prop 22 Calculator", ["~/Scripts/prop22_calculator.py", "~/Scripts/Prop22/main.py", "~/Scripts/Prop-22/main.py"]),
     ("Punks Omni Dashboard", ["~/Scripts/punks_omni_dashboard.py", "~/Scripts/omni_dashboard_portable.py", "~/Scripts/PunksDashboard/main.py", "~/Scripts/Punks-Dashboard/main.py"]),
-    ("Punks Tactical", ["~/Scripts/PunksTactical/main.py", "~/Scripts/PunksTactical/app.py"]),
+    # Hidden 2026-11-19: PunksTactical/main.py has never parsed (15 CSS #id selector lines
+    # stripped from its HTML f-string, in every commit). Also blocked in _skip_dirs and
+    # _DASH_SKIP_PARTS below so auto-discovery / the dashboard can't re-add it.
+    # ("Punks Tactical", ["~/Scripts/PunksTactical/main.py", "~/Scripts/PunksTactical/app.py"]),
     ("Punks Wifi Tray", ["~/Scripts/PunksWifi/main.py", "~/Scripts/Punks-Wifi/main.py"]),
     ("PyFixer Utility", ["~/Scripts/Osiris-GUI-Suite/pyfixer.py", "~/Scripts/PyFixer/main.py"]),
     ("Restaurant Roulette", ["~/Scripts/food_roulette.py", "~/Scripts/Restaurant-Roulette/main.py"]),
@@ -311,7 +314,9 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "06-build-adapters", "apply-aegis-lockfix", "apply-aegis-titan",
               # One-shot patcher with a thin PyQt6 wrapper: rewrites/restores files under a
               # hardcoded C:/Users/tsann/.../gui_apps path. Not an app; hidden 2026-11-19.
-              "aegis-crash-fixer-v3"}
+              "aegis-crash-fixer-v3",
+              # main.py doesn't parse (see the commented-out registry entry). Hidden 2026-11-19.
+              "PunksTactical"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -366,6 +371,7 @@ _DASH_CANDIDATES = [
 _DASH_SKIP_PARTS = (
     "/PyQt-Fluent-Widgets/", "/kivy/kivy/", "/CustomTkinter/customtkinter/",
     "/PySimpleGUI/PySimpleGUI/", "/mpv/TOOLS/",
+    "/PunksTactical/",   # hidden 2026-11-19 (main.py doesn't parse)
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
@@ -598,6 +604,10 @@ _have_titles = {n.lower() for n, _ in MASTER_REGISTRY}
 _dash_new = []
 for _title, _path, _py in (_dash_apps or []):
     if not os.path.exists(_path):
+        continue
+    # Apply the skip list to cached entries too (it was only applied when the cache is
+    # rebuilt, so a newly skipped app stayed tiled until the next refresh).
+    if any(_part in _path for _part in _DASH_SKIP_PARTS):
         continue
     # Remember the dashboard's interpreter pick even for apps already tiled
     # above (registry/auto-discovered), keyed by resolved path: otherwise
