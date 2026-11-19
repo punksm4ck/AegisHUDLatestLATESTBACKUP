@@ -352,6 +352,34 @@ def _pyfor_key(path):
     return os.path.realpath(os.path.expanduser(path)).lower()
 
 
+# --- Explicit interpreter overrides (2026-11-19) ---------------------------
+# Tiles that otherwise fall back to bare "python3" (= /usr/bin/python3 3.9
+# under launchd, no PyQt/psutil). Each was verified: every third-party module
+# the script imports is importable by the interpreter given here, and the tile
+# was test-launched and stayed up. Checked before _PY_FOR in _launch_app.
+_BREW_PY = "/opt/homebrew/bin/python3"
+INTERPRETER_OVERRIDES = {
+    "~/Projects/mac-gui-suite/Aegis-Contextual-HUD/ai_terminal.py": _BREW_PY,  # AI Terminal (tkinter)
+    "~/Projects/mac-gui-suite/aegis-osiris-wizard/aegis_osiris_wizard.py": _BREW_PY,  # Aegis Osiris Wizard (tkinter)
+    "~/Projects/mac-gui-suite/claude_check/aegis_osiris_wizard.py": _BREW_PY,  # Claude Check (tkinter)
+    "~/Projects/mac-gui-suite/clean-room/CleanRoomGUI.py": _BREW_PY,  # Clean Room (PyQt6)
+    "~/Projects/mac-gui-suite/cleanroomgui/CleanRoomGUI.py": _BREW_PY,  # Cleanroomgui (PyQt6)
+    "~/Projects/mac-gui-suite/EDM_Finder/edm_finder.py": _BREW_PY,  # Edm Finder (customtkinter)
+    "~/Projects/mac-gui-suite/food-roulette/food_roulette.py": _BREW_PY,  # Food Roulette (PyQt6)
+    "~/Projects/mac-gui-suite/nasdrivegui/NASDriveGUI.py": _BREW_PY,  # NAS Drive GUI (PyQt6)
+    "~/Projects/mac-gui-suite/netsec/NetSecDeployer.py": _BREW_PY,  # Netsec (PyQt6)
+    "~/Projects/mac-gui-suite/netsecdeployer/NetSecDeployer.py": _BREW_PY,  # Netsecdeployer (PyQt6)
+    "~/Projects/mac-gui-suite/omnisurgeon-pro/omnisurgeon.py": _BREW_PY,  # OmniSurgeon Pro (PyQt6)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/network_gui.py": _BREW_PY,  # Network GUI (PyQt6)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/pyfixer.py": _BREW_PY,  # PyFixer Utility (tkinter)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/scrape_gui.py": _BREW_PY,  # Scrape GUI (PyQt6)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/system_monitor.py": _BREW_PY,  # System Monitor (tkinter)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/tubemaster_pro.py": _BREW_PY,  # TubeMaster Pro Elite (PyQt6)
+    "~/Projects/mac-gui-suite/swiss-army-knife/swiss_army_knife.py": _BREW_PY,  # Swiss Army Knife (tkinter)
+}
+_INTERP_OVERRIDE = {_pyfor_key(k): v for k, v in INTERPRETER_OVERRIDES.items()}
+
+
 def _dash_key(path):
     p = os.path.abspath(os.path.expanduser(path))
     stem = re.sub(r"[^a-z0-9]", "", os.path.splitext(os.path.basename(p))[0].lower())
@@ -598,7 +626,8 @@ def _launch_app(name, path, close_callback):
                 subprocess.Popen(["open", exp], stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
             else:
                 interp = ("bash" if exp.endswith(".sh") else
-                          _PY_FOR.get(exp) or _PY_FOR.get(_pyfor_key(exp))
+                          _INTERP_OVERRIDE.get(_pyfor_key(exp))
+                          or _PY_FOR.get(exp) or _PY_FOR.get(_pyfor_key(exp))
                           or _PY_FOR.get("dir:" + os.path.dirname(_pyfor_key(exp)))
                           or "python3")
                 subprocess.Popen([interp, exp], cwd=os.path.dirname(exp), stdout=subprocess.DEVNULL, stderr=err_out, start_new_session=True)
