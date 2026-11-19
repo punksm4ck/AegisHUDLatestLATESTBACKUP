@@ -380,8 +380,16 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/Osiris-GUI-Suite/system_monitor.py": _BREW_PY,  # System Monitor (tkinter)
     "~/Projects/mac-gui-suite/Osiris-GUI-Suite/tubemaster_pro.py": _BREW_PY,  # TubeMaster Pro Elite (PyQt6)
     "~/Projects/mac-gui-suite/swiss-army-knife/swiss_army_knife.py": _BREW_PY,  # Swiss Army Knife (tkinter)
+    # Per-project venvs (<project>/.venv, gitignored), pinned deps installed 2026-11-19.
+    "~/Projects/mac-gui-suite/aegis-fire-map/aegis_fire_map.py": "~/Projects/mac-gui-suite/aegis-fire-map/.venv/bin/python",
+    "~/Projects/mac-gui-suite/css-server-browser2/css_server_browser2.py": "~/Projects/mac-gui-suite/css-server-browser2/.venv/bin/python",
+    "~/Projects/mac-gui-suite/github-tool-auto-sync/sovereign_nexus_apex-PUBLIC.py": "~/Projects/mac-gui-suite/github-tool-auto-sync/.venv/bin/python",
+    "~/Projects/mac-gui-suite/network-guardian-gui/network_guardian_gui.py": "~/Projects/mac-gui-suite/network-guardian-gui/.venv/bin/python",
+    "~/Projects/mac-gui-suite/punksadminconsole-enterprise/punksadminconsole_enterprise.py": "~/Projects/mac-gui-suite/punksadminconsole-enterprise/.venv/bin/python",
+    "~/Projects/mac-gui-suite/ssoc/ssoc.py": "~/Projects/mac-gui-suite/ssoc/.venv/bin/python",
+    "~/Projects/mac-gui-suite/tubemaster-pro/tubemaster_pro.py": "~/Projects/mac-gui-suite/tubemaster-pro/.venv/bin/python",
 }
-_INTERP_OVERRIDE = {_pyfor_key(k): v for k, v in INTERPRETER_OVERRIDES.items()}
+_INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
 
 def _dash_key(path):
