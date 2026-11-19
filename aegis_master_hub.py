@@ -40,7 +40,10 @@ MASTER_REGISTRY = [
     ("AI Water Tracker", ["~/Scripts/WaterTracker/main.py", "~/Scripts/Water-Tracker/main.py"]),
     ("APK Architect Pro", ["~/Scripts/apk_architect.py", "~/Scripts/ApkArchitect/main.py", "~/Scripts/APKArchitect/main.py"]),
     ("ColorNote Matrix", ["/home/tsann/.local/share/applications/colornote-osiris.desktop"]),
-    ("CSS Server Browser", ["~/Scripts/css_server_browser2.py", "~/Scripts/css_server_browser.py", "~/Scripts/Osiris-GUI-Suite/css_server_browser.py", "~/Scripts/SteamServerBrowser/main.py"]),
+    # Project copy first (2026-11-19): the ~/Scripts basename fallback below resolved to the
+    # Osiris-GUI-Suite copy, which has no interpreter (bare python3, no PyQt6/dotenv). Claiming
+    # this path also stops auto-discovery adding it again as a second "Css Server Browser2" tile.
+    ("CSS Server Browser", ["~/Projects/mac-gui-suite/css-server-browser2/css_server_browser2.py", "~/Scripts/css_server_browser2.py", "~/Scripts/css_server_browser.py", "~/Scripts/Osiris-GUI-Suite/css_server_browser.py", "~/Scripts/SteamServerBrowser/main.py"]),
     ("CX Operations Module", ["~/Scripts/job_listings_app.py", "~/Scripts/cx-ops/main.py", "~/Scripts/CXOps/main.py", "~/Scripts/JobListings/main.py"]),
     ("Facial Rec GUI", ["~/Scripts/facial-rec-gui/main.py", "~/Scripts/FacialRec/main.py", "~/Scripts/FaceRec/main.py"]),
     ("FNV Mod Manager", ["~/FNV_OSIRIS_Mod_Manager.py", "~/Scripts/FNV_OSIRIS_Mod_Manager.py"]),
@@ -405,6 +408,8 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/tubemaster-pro/tubemaster_pro.py": "~/Projects/mac-gui-suite/tubemaster-pro/.venv/bin/python",
     "~/Projects/mac-gui-suite/datacentertracker/main.py": "~/Projects/mac-gui-suite/datacentertracker/.venv/bin/python",
     "~/Projects/mac-gui-suite/xenn-engagement-auditor/xenn_engagement_auditor.py": "~/Projects/mac-gui-suite/xenn-engagement-auditor/.venv/bin/python",
+    # Import-checked only (2026-11-19, every third-party import resolves); NOT test-launched.
+    "~/Projects/mac-gui-suite/meme-sync-gui/meme_sync_gui.py": _BREW_PY,  # Meme Sync Pro (PyQt6, PIL)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
