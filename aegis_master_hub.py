@@ -123,6 +123,12 @@ MASTER_REGISTRY = [
     # SwiftUI menu-bar app (source: ~/Scripts/NetSec-VPS), built Release
     # with xcodebuild and installed to ~/Applications.
     ("NetSec-VPS", ["~/Applications/NetSec-VPS.app"]),
+
+    # --- Added by Claude (2026-11-19) -----------------------------------
+    # Electron app (source: ~/Downloads/pinboard-desktop-app, GitHub
+    # punksm4ck/Pin_Dashboard_HTML), built with `npm run dist:mac` and
+    # installed to ~/Applications.
+    ("Pinboard Server", ["~/Applications/Pinboard Server.app"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
