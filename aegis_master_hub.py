@@ -110,7 +110,16 @@ MASTER_REGISTRY = [
     # com.punksm4ck.nativecam, same dev team, Camera.app is the newer
     # build -- Jul 27 02:09 vs Jul 26 22:41) -- point at the current build.
     ("NativeCam", ["/Applications/Camera.app"]),
-    ("AEGIS Web Shell", ["/Applications/AEGIS.app"]),
+    # Native Swift WKWebView window onto the local Open WebUI server at
+    # http://127.0.0.1:8081 (bundle id com.aegis.webui; built by
+    # ~/Scripts/aegis/openwebui/build-aegis-native.sh). The server itself is run
+    # by the com.aegis.openwebui LaunchAgent; this tile only opens the window.
+    # Launched by its own path: /Applications/AEGIS.app is a different app.
+    ("AEGIS Open WebUI", ["~/Applications/AEGIS.app"]),
+    # NOT SwiftUI: a PyInstaller bundle of the AEGIS Chat app (bundle id
+    # com.punksm4ck.aegis, embedded Python; built from ~/.aegis_chat).
+    # Renamed from "AEGIS Web Shell" 2026-11-19.
+    ("AEGIS Chat (PyInstaller)", ["/Applications/AEGIS.app"]),
     # .app bundles that wrap an already-tiled script with the correct
     # interpreter/venv (added alongside the existing script-path tiles,
     # not replacing them):
