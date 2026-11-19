@@ -308,7 +308,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # Not GUI apps (hidden 2026-11-19): 06-build-adapters is a code generator that
               # writes into app/; the two apply-aegis-* scripts are one-shot patchers that
               # overwrite a hardcoded C:/Users/tsann/... file. Run from a terminal if needed.
-              "06-build-adapters", "apply-aegis-lockfix", "apply-aegis-titan"}
+              "06-build-adapters", "apply-aegis-lockfix", "apply-aegis-titan",
+              # One-shot patcher with a thin PyQt6 wrapper: rewrites/restores files under a
+              # hardcoded C:/Users/tsann/.../gui_apps path. Not an app; hidden 2026-11-19.
+              "aegis-crash-fixer-v3"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
