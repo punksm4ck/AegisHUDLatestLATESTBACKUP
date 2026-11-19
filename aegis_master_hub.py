@@ -298,7 +298,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "the-absolute-finale", "the-final-squash", "the-zenith-protocol",
               # Linux-only (hardcoded /home/tsann paths, konsole, wmctrl); hidden 2026-11-19.
               "master-gui-launcher",
-              "xenn-master-suite-patcher"}
+              "xenn-master-suite-patcher",
+              # Stale copy of github-tool-auto-sync's script (still `git push --force`es the
+              # Intel vault); the "Github Tool Auto Sync" tile runs the fixed copy. Hidden 2026-11-19.
+              "sovereign-nexus-apex"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
