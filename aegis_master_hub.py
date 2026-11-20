@@ -175,6 +175,10 @@ MASTER_REGISTRY = [
     # ~/Projects/github-staging. Mock UI: its one button only appends text to a log (the SIP/Asterisk
     # connection is a placeholder; `socket` is imported but unused). No network, files or installers.
     ("EnterpriseComm", ["~/Projects/github-staging/enterprisecomm/EnterpriseComm.py"]),
+    # Restored 2026-11-19 (was the wayland_tripwire dashboard tile "substrate_os_overlay", removed in
+    # 77768fe). Differs from "Substrate OS Overlay" (SubstrateOS/main.py). Borderless, always-on-top
+    # 45 px CPU/clock bar above the Dock; no close button -- quit it from Activity Monitor or by PID.
+    ("Substrate OS Overlay (variant)", ["~/Projects/mac-gui-suite/Aegis-Contextual-HUD/scripts/substrate_os_overlay.py"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -510,6 +514,7 @@ INTERPRETER_OVERRIDES = {
     "~/Projects/mac-gui-suite/Osiris-GUI-Suite/ai_water_tracker.py": _BREW_PY,  # AI Water Tracker (tkinter, stdlib only)
     # PricePulse runs launchers/pricepulse_ui.sh, which execs Homebrew python3 itself.
     "~/Projects/github-staging/enterprisecomm/EnterpriseComm.py": _BREW_PY,  # EnterpriseComm (PyQt6, stdlib only)
+    "~/Projects/mac-gui-suite/Aegis-Contextual-HUD/scripts/substrate_os_overlay.py": _BREW_PY,  # Substrate OS Overlay (variant) (tkinter; psutil from the per-user site)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
