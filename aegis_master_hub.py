@@ -179,6 +179,11 @@ MASTER_REGISTRY = [
     # 77768fe). Differs from "Substrate OS Overlay" (SubstrateOS/main.py). Borderless, always-on-top
     # 45 px CPU/clock bar above the Dock; no close button -- quit it from Activity Monitor or by PID.
     ("Substrate OS Overlay (variant)", ["~/Projects/mac-gui-suite/Aegis-Contextual-HUD/scripts/substrate_os_overlay.py"]),
+    # World Monitor 2.11.8 (2026-11-19): upstream koala73/worldmonitor release (your fork: punksm4ck/worldmonitor),
+    # aarch64 .app.tar.gz, sha256 matched GitHub's digest; Developer ID ELIAS HABIB (YC5UXN97NZ), notarized,
+    # hardened runtime, no entitlements. Bundles a Node sidecar (Node.js Foundation signed) serving 127.0.0.1
+    # only. Network dashboard: fetches news/data when open; stores its own keys in the login keychain.
+    ("World Monitor", ["~/Applications/World Monitor.app"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
