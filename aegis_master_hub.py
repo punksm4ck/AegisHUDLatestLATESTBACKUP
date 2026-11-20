@@ -374,7 +374,11 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "cb-rgb-controller",
               # CLI code patcher, not an app: reads sovereign_nexus_omega.py from its working directory and
               # writes sovereign_nexus_omega_hardened.py. Run from a terminal if needed. Hidden 2026-11-19.
-              "nexus-patcher"}
+              "nexus-patcher",
+              # One-shot YouTube playlist downloader that cannot work as written: it needs pytube (no release
+              # since 2023-05-07), filters for abr="320kbps" (YouTube audio streams are lower), and renames
+              # .mp4/.webm audio to .mp3 without converting before tagging it with mutagen. Hidden 2026-11-19.
+              "m3u-formatter"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
