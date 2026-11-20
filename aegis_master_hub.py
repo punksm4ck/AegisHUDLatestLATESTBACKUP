@@ -502,6 +502,7 @@ INTERPRETER_OVERRIDES = {
     # NOT test-launched. PyQt5 is not usable in Homebrew python (only Qt5 libs + sip installed).
     "~/Projects/mac-gui-suite/Aegis-Core/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/Aegis-Core/.venv/bin/python",  # Aegis Core AI Watcher (PyQt5, mss)
     "~/Projects/mac-gui-suite/ai-watcher-enterprise/ai_watcher_enterprise.py": "~/Projects/mac-gui-suite/ai-watcher-enterprise/.venv/bin/python",  # Ai Watcher Enterprise (PyQt5, mss, numpy)
+    "~/Projects/mac-gui-suite/SP-Locator/sp_locator_v3.py": "~/Projects/mac-gui-suite/sentinel-diag/.venv/bin/python",  # Sp Locator (PyQt5; shares sentinel-diag .venv)
     # The 3 sentinel_diagnostics.py tiles now run launchers/*_live.sh, which exec their
     # project .venv python directly (.sh tiles don't consult these overrides).
     "~/Projects/mac-gui-suite/ICE-Watch/ice_watch.py": "~/Projects/mac-gui-suite/ICE-Watch/.venv/bin/python",  # ICE Watch (Kivy 2.3.1, Python 3.12)
