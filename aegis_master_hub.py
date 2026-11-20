@@ -387,7 +387,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # One-shot YouTube playlist downloader that cannot work as written: it needs pytube (no release
               # since 2023-05-07), filters for abr="320kbps" (YouTube audio streams are lower), and renames
               # .mp4/.webm audio to .mp3 without converting before tagging it with mutagen. Hidden 2026-11-19.
-              "m3u-formatter"}
+              "m3u-formatter",
+              # Linux tray wrapper for /usr/bin/windscribe (wmctrl/xprop; starts the VPN client at launch). The real
+              # macOS Windscribe app is installed. Hidden 2026-11-20; remove this entry to restore the tile.
+              "windscribe-tray"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -451,6 +454,7 @@ _DASH_SKIP_PARTS = (
     # for /home/tsann backends that don't exist here, Linux-only tools, apt installers, and copies of
     # apps that live in real projects (AI Water Tracker, PricePulse re-pointed above). 2026-11-19.
     "/wayland_tripwire/",
+    "/windscribe-tray/",   # hidden 2026-11-20 (Linux tray wrapper; real macOS Windscribe app installed)
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
