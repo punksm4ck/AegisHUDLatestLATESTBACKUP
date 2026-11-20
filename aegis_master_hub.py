@@ -371,7 +371,10 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               # Acer Chromebook Plus 516 GE keyboard-RGB controller (ectool / /dev/port; Kubuntu only):
               # nothing to control on this Mac, and its __main__.py runs `apt install` and
               # `pip install keyboard --break-system-packages` on launch. Hidden 2026-11-19.
-              "cb-rgb-controller"}
+              "cb-rgb-controller",
+              # CLI code patcher, not an app: reads sovereign_nexus_omega.py from its working directory and
+              # writes sovereign_nexus_omega_hardened.py. Run from a terminal if needed. Hidden 2026-11-19.
+              "nexus-patcher"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
