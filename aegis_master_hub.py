@@ -37,7 +37,9 @@ MASTER_REGISTRY = [
     ("AI Datacenter Tracker", ["~/Scripts/DatacenterTracker/main.py", "~/Scripts/AI_Datacenter_Tracker/main.py"]),
     ("AI-SPY", ["~/Scripts/ai_watcher_enterprise.py", "~/Scripts/ai_watcher_enterprise_v5.py", "~/Scripts/AegisHUDLatest/ai_watcher_enterprise_v5.py"]),
     ("AI Terminal", ["~/Scripts/AegisHUDLatest/ai_terminal.py", "~/Scripts/ai_terminal.py"]),
-    ("AI Water Tracker", ["~/Scripts/WaterTracker/main.py", "~/Scripts/Water-Tracker/main.py"]),
+    # Real-project copy first (2026-11-19): this tile otherwise resolved nowhere and the app only
+    # appeared as a dashboard tile running the wayland_tripwire duplicate-cluster copy.
+    ("AI Water Tracker", ["~/Projects/mac-gui-suite/Osiris-GUI-Suite/ai_water_tracker.py", "~/Scripts/WaterTracker/main.py", "~/Scripts/Water-Tracker/main.py"]),
     ("APK Architect Pro", ["~/Scripts/apk_architect.py", "~/Scripts/ApkArchitect/main.py", "~/Scripts/APKArchitect/main.py"]),
     ("ColorNote Matrix", ["/home/tsann/.local/share/applications/colornote-osiris.desktop"]),
     # Project copy first (2026-11-19): the ~/Scripts basename fallback below resolved to the
@@ -166,6 +168,9 @@ MASTER_REGISTRY = [
     # datacentertracker copy). Needs its own .venv: without groq it runs
     # `pip install groq --break-system-packages` into whatever python launched it.
     ("AI Datacenter Tracker (USA)", ["~/Projects/mac-gui-suite/ai-datacenter-tracker/main.py"]),
+    # Was a dashboard tile on the wayland_tripwire copy; same code in Aegis-Contextual-HUD (2026-11-19).
+    # It relaunches itself with bare "python3 <file> ui_mode" for its window.
+    ("PricePulse", ["~/Projects/mac-gui-suite/Aegis-Contextual-HUD/modules/pricepulse.py"]),
 ]
 
 # --- Extra one-off apps merged in from the older fork's registry -----------
@@ -358,7 +363,11 @@ _skip_dirs = {"AegisHUD-macOS",  # the HUD itself
               "sentinel-diag", "ai-content-detector-sentinel-diag-suite",
               # Duplicate of sentinel-diag (minus a copyright line) that also fails bare (needs the
               # "live" subcommand) and on Homebrew python (no PyQt5 bindings). Hidden 2026-11-19.
-              "sentinel-diagnostics"}
+              "sentinel-diagnostics",
+              # Acer Chromebook Plus 516 GE keyboard-RGB controller (ectool / /dev/port; Kubuntu only):
+              # nothing to control on this Mac, and its __main__.py runs `apt install` and
+              # `pip install keyboard --break-system-packages` on launch. Hidden 2026-11-19.
+              "cb-rgb-controller"}
 _auto = []
 if os.path.isdir(_MAC_ROOT):
     for _d in sorted(os.listdir(_MAC_ROOT)):
@@ -418,6 +427,10 @@ _DASH_SKIP_PARTS = (
     # Tiled via launchers/*_live.sh (bare script exits without the "live" subcommand):
     "/Aegis-Core/sentinel_diagnostics.py", "/sentinel-diag/", "/ai-content-detector-sentinel-diag-suite/",
     "/sentinel-diagnostics/",   # duplicate of sentinel-diag, hidden 2026-11-19 (not -gui)
+    # Duplicate-copy cluster (CLAUDE.md): its 15 dashboard tiles were stale copies -- 6 template wrappers
+    # for /home/tsann backends that don't exist here, Linux-only tools, apt installers, and copies of
+    # apps that live in real projects (AI Water Tracker, PricePulse re-pointed above). 2026-11-19.
+    "/wayland_tripwire/",
 )
 _DASH_SKIP_FILES = {"aegis_master_hub.py", "aegis_engine_macos.py", "gui_dashboard.py"}
 _DASH_GENERIC = {"main", "app", "gui", "run", "start", "launcher", "window", "ui", "index"}
@@ -483,6 +496,8 @@ INTERPRETER_OVERRIDES = {
     # Own .venv (2026-11-19; wheels only, hash-pinned, 14-day rule, no .pth): PyQt6 6.12.0,
     # PyQt6-WebEngine 6.140.0, groq 1.7.0. Import-checked; NOT test-launched.
     "~/Projects/mac-gui-suite/ai-datacenter-tracker/main.py": "~/Projects/mac-gui-suite/ai-datacenter-tracker/.venv/bin/python",  # AI Datacenter Tracker (USA)
+    "~/Projects/mac-gui-suite/Osiris-GUI-Suite/ai_water_tracker.py": _BREW_PY,  # AI Water Tracker (tkinter, stdlib only)
+    "~/Projects/mac-gui-suite/Aegis-Contextual-HUD/modules/pricepulse.py": _BREW_PY,  # PricePulse (tkinter, stdlib only)
 }
 _INTERP_OVERRIDE = {_pyfor_key(k): os.path.expanduser(v) for k, v in INTERPRETER_OVERRIDES.items()}
 
